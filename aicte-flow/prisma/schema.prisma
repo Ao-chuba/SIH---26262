@@ -1,0 +1,280 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Region {
+  id            String        @id @default(cuid())
+  name          String
+  headquarters  String
+  institutions  Institution[]
+  users         User[]
+  deadlineItems DeadlineItem[]
+}
+
+model Institution {
+  id            String         @id @default(cuid())
+  aicteId       String         @unique
+  name          String
+  type          String         // ENGINEERING|MANAGEMENT|PHARMACY|ARCH
+  state         String
+  regionId      String
+  contactEmail  String
+  contactPhone  String
+  region        Region         @relation(fields: [regionId], references: [id])
+  users         User[]
+  applications  Application[]
+  undertakings  Undertaking[]
+  documents     InstDocument[]
+  notifications Notification[]
+  deadlineItems DeadlineItem[]
+}
+
+model User {
+  id             String         @id @default(cuid())
+  name           String
+  email          String         @unique
+  role           String         // INSTITUTION|REGIONAL_OFFICER|BUREAU_OFFICER|EVC_COMMITTEE|SAC_SHC_MEMBER|ADMIN
+  regionId       String?
+  institutionId  String?
+  designation    String?
+  escalatesToId  String?
+  region         Region?        @relation(fields: [regionId], references: [id])
+  institution    Institution?   @relation(fields: [institutionId], references: [id])
+  escalatesTo    User?          @relation("EscalationChain", fields: [escalatesToId], references: [id])
+  subordinates   User[]         @relation("EscalationChain")
+  assignedApps   Application[]  @relation("AssignedTo")
+  observations   Observation[]
+  verifiedUndertakings Undertaking[] @relation("VerifiedBy")
+  verifiedDocuments    InstDocument[] @relation("DocVerifiedBy")
+  uploadedEvidence     Evidence[]
+  notifications        Notification[]
+  escalationTargets    EscalationEvent[] @relation("EscalatedTo")
+  auditLogs            AuditLog[]
+  ruleConfigs          RuleConfig[]
+  stageEntries         ApplicationStage[] @relation("StageEnteredBy")
+}
+
+model Application {
+  id              String             @id @default(cuid())
+  refNo           String             @unique
+  institutionId   String
+  regionId        String
+  applicationType String             // NEW_INSTITUTION|NEW_COURSE|EXTENSION|INTAKE_INCREASE|CLOSURE|OTHER
+  route           String             // ONLY_SCRUTINY|SCRUTINY_EVC|EVC_SAC_SHC|ONLY_EVC|SCRUTINY_EVC_SAC_SHC
+  currentStageKey String
+  status          String             @default("IN_PROGRESS") // IN_PROGRESS|RETURNED|COMPLETED|DECIDED
+  assignedToId    String?
+  submittedAt     DateTime           @default(now())
+  stageEnteredAt  DateTime           @default(now())
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  institution     Institution        @relation(fields: [institutionId], references: [id])
+  assignedTo      User?              @relation("AssignedTo", fields: [assignedToId], references: [id])
+  stages          ApplicationStage[]
+  observations    Observation[]
+  evcVisit        EvcVisit?
+  undertakings    Undertaking[]
+  documents       InstDocument[]
+  deadlineItems   DeadlineItem[]
+  notifications   Notification[]
+}
+
+model ApplicationStage {
+  id            String      @id @default(cuid())
+  applicationId String
+  stageKey      String
+  enteredAt     DateTime    @default(now())
+  exitedAt      DateTime?
+  enteredById   String?
+  outcome       String?     // ADVANCED|RETURNED|COMPLETED
+  notes         String?
+  application   Application @relation(fields: [applicationId], references: [id])
+  enteredBy     User?       @relation("StageEnteredBy", fields: [enteredById], references: [id])
+}
+
+model Observation {
+  id            String      @id @default(cuid())
+  applicationId String
+  stageKey      String
+  authorId      String
+  text          String
+  kind          String      // OBSERVATION|DEFICIENCY|CLARIFICATION|REPLY
+  createdAt     DateTime    @default(now())
+  application   Application @relation(fields: [applicationId], references: [id])
+  author        User        @relation(fields: [authorId], references: [id])
+}
+
+model EvcVisit {
+  id              String      @id @default(cuid())
+  applicationId   String      @unique
+  status          String      @default("QUEUED") // QUEUED|SCHEDULED|COMPLETED|CANCELLED
+  queuedAt        DateTime    @default(now())
+  scheduledFor    DateTime?
+  completedAt     DateTime?
+  committeeId     String?
+  reportRef       String?
+  isNewInstitution Boolean    @default(false)
+  application     Application @relation(fields: [applicationId], references: [id])
+}
+
+model Undertaking {
+  id            String        @id @default(cuid())
+  applicationId String
+  institutionId String
+  title         String
+  condition     String
+  dueDate       DateTime
+  status        String        @default("PENDING") // PENDING|SUBMITTED|VERIFIED|REJECTED|OVERDUE|CLOSED
+  grantedAt     DateTime      @default(now())
+  verifiedById  String?
+  verifiedAt    DateTime?
+  remarks       String?
+  application   Application   @relation(fields: [applicationId], references: [id])
+  institution   Institution   @relation(fields: [institutionId], references: [id])
+  verifiedBy    User?         @relation("VerifiedBy", fields: [verifiedById], references: [id])
+  evidence      Evidence[]    @relation("UndertakingEvidence")
+  deadlineItems DeadlineItem[]
+}
+
+model InstDocument {
+  id            String        @id @default(cuid())
+  institutionId String
+  applicationId String?
+  docType       String        // LEASE|NOC|LAND_USE|FIRE_SAFETY|BUILDING_STABILITY|OTHER
+  title         String
+  validFrom     DateTime
+  validUntil    DateTime
+  status        String        @default("VALID") // VALID|EXPIRING|EXPIRED|RENEWAL_SUBMITTED|RENEWAL_VERIFIED|RENEWAL_REJECTED
+  verifiedById  String?
+  verifiedAt    DateTime?
+  institution   Institution   @relation(fields: [institutionId], references: [id])
+  application   Application?  @relation(fields: [applicationId], references: [id])
+  verifiedBy    User?         @relation("DocVerifiedBy", fields: [verifiedById], references: [id])
+  evidence      Evidence[]    @relation("DocumentEvidence")
+  deadlineItems DeadlineItem[]
+}
+
+model Evidence {
+  id            String       @id @default(cuid())
+  ownerType     String       // UNDERTAKING|DOCUMENT|APPLICATION
+  ownerId       String
+  fileName      String
+  filePath      String
+  mimeType      String
+  sizeBytes     Int
+  uploadedById  String
+  uploadedAt    DateTime     @default(now())
+  note          String?
+  uploadedBy    User         @relation(fields: [uploadedById], references: [id])
+  undertaking   Undertaking? @relation("UndertakingEvidence", fields: [undertakingId], references: [id])
+  undertakingId String?
+  document      InstDocument? @relation("DocumentEvidence", fields: [documentId], references: [id])
+  documentId    String?
+}
+
+model DeadlineItem {
+  id              String           @id @default(cuid())
+  kind            String           // STAGE_TIMELINE|EVC_SCHEDULING|EVC_COMPLETION|UNDERTAKING|DOCUMENT_EXPIRY
+  refType         String
+  refId           String
+  institutionId   String?
+  regionId        String?
+  ownerUserId     String?
+  title           String
+  dueAt           DateTime
+  state           String           @default("OPEN") // OPEN|SATISFIED|CANCELLED
+  escalationLevel Int              @default(0)
+  openedAt        DateTime         @default(now())
+  closedAt        DateTime?
+  institution     Institution?     @relation(fields: [institutionId], references: [id])
+  region          Region?          @relation(fields: [regionId], references: [id])
+  application     Application?     @relation(fields: [applicationId], references: [id])
+  applicationId   String?
+  undertaking     Undertaking?     @relation(fields: [undertakingId], references: [id])
+  undertakingId   String?
+  document        InstDocument?    @relation(fields: [documentId], references: [id])
+  documentId      String?
+  alertLogs       AlertLog[]
+  notifications   Notification[]
+  escalationEvents EscalationEvent[]
+
+  @@index([state, dueAt])
+}
+
+model AlertLog {
+  id             String       @id @default(cuid())
+  deadlineItemId String
+  alertKey       String
+  firedAt        DateTime     @default(now())
+  deadlineItem   DeadlineItem @relation(fields: [deadlineItemId], references: [id])
+
+  @@unique([deadlineItemId, alertKey])
+}
+
+model Notification {
+  id               String       @id @default(cuid())
+  toUserId         String?
+  toInstitutionId  String?
+  channel          String       // INAPP|EMAIL|SMS
+  kind             String       // REMINDER|OVERDUE|ESCALATION|INFO|RETURN
+  subject          String
+  body             String
+  deadlineItemId   String?
+  applicationId    String?
+  createdAt        DateTime     @default(now())
+  readAt           DateTime?
+  toUser           User?        @relation(fields: [toUserId], references: [id])
+  toInstitution    Institution? @relation(fields: [toInstitutionId], references: [id])
+  deadlineItem     DeadlineItem? @relation(fields: [deadlineItemId], references: [id])
+  application      Application?  @relation(fields: [applicationId], references: [id])
+}
+
+model EscalationEvent {
+  id               String       @id @default(cuid())
+  deadlineItemId   String
+  fromLevel        Int
+  toLevel          Int
+  escalatedToUserId String
+  reason           String
+  createdAt        DateTime     @default(now())
+  deadlineItem     DeadlineItem @relation(fields: [deadlineItemId], references: [id])
+  escalatedTo      User         @relation("EscalatedTo", fields: [escalatedToUserId], references: [id])
+}
+
+model AuditLog {
+  seq         Int      @id @default(autoincrement())
+  ts          DateTime @default(now())
+  actorId     String?
+  actorRole   String?
+  action      String
+  entityType  String
+  entityId    String
+  payload     String   // JSON string
+  prevHash    String
+  hash        String
+  actor       User?    @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+}
+
+model RuleConfig {
+  key         String   @id
+  value       String   // JSON string
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation(fields: [updatedById], references: [id])
+}
+
+model SystemClock {
+  id           Int      @id @default(1)
+  simulatedNow DateTime?
+  updatedAt    DateTime @updatedAt
+}
