@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "seed": "npx prisma db push && tsx prisma/seed.ts",
-    "tick": "tsx -e \"import('./src/lib/engine/tick.ts').then(m => m.tick().then(r => console.log(r)))\""
+    "tick": "tsx scripts/tick.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
