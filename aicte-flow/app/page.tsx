@@ -44,9 +44,21 @@ export default async function LoginPage() {
           {roleCards.map((card) => (
             <form key={card.role} action={switchUser}>
               <input type="hidden" name="userId" value={users.find((u) => u.role === card.role)?.id ?? ""} />
-              <button type="submit" style={{ width: "100%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, padding: "16px 12px", cursor: "pointer", textAlign: "center", transition: "all 0.2s", color: "#fff" }}
-                onMouseOver={(e) => (e.currentTarget.style.background = `${card.color}30`)}
-                onMouseOut={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}>
+              <button
+                type="submit"
+                className="role-card-btn"
+                style={{
+                  width: "100%",
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  borderRadius: 12,
+                  padding: "16px 12px",
+                  cursor: "pointer",
+                  textAlign: "center",
+                  transition: "all 0.2s",
+                  color: "#fff",
+                }}
+              >
                 <div style={{ fontSize: 28, marginBottom: 8 }}>{card.icon}</div>
                 <div style={{ fontWeight: 700, fontSize: 13 }}>{card.label}</div>
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginTop: 4 }}>{card.desc}</div>
