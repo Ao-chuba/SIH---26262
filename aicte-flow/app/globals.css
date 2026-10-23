@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --primary: #1e3a5f;
-  --primary-light: #2a5298;
+  --primary: #1e3a8a;
+  --primary-light: #2563eb;
   --primary-dark: #0f2040;
   --accent: #f0a500;
-  --bg: #f4f6fb;
+  --bg: #f8fafc;
   --sidebar-bg: #1e3a5f;
   --sidebar-text: #c8d8f0;
   --sidebar-hover: #2a5298;
@@ -20,6 +20,33 @@
   --purple: #a855f7;
   --gray: #94a3b8;
 }
+
+.role-accent-stripe {
+  position: fixed;
+  top: 0;
+  left: 240px;
+  right: 0;
+  height: 3px;
+  z-index: 120;
+}
+
+.validity-bar {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.validity-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+.validity-bar-fill.ok { background: #22c55e; }
+.validity-bar-fill.warn { background: #f59e0b; }
+.validity-bar-fill.critical { background: #ef4444; }
+.validity-bar-fill.expired { background: #991b1b; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 

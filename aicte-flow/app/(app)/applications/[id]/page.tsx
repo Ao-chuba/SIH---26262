@@ -5,7 +5,9 @@ import { differenceInCalendarDays } from "date-fns";
 import { getNow } from "@/lib/clock";
 import Link from "next/link";
 import { ActionPanel } from "../ActionPanel";
-import { ROUTES, STAGES } from "@/config/rules";
+import { ROUTES, STAGES, APH_NORMS } from "@/config/rules";
+import { parseMetrics, evaluateAph } from "@/lib/aph";
+import { computeDualClock } from "@/lib/dualClock";
 
 function SlaChip({ days, escalationLevel }: { days: number; escalationLevel?: number }) {
   if (escalationLevel && escalationLevel > 0) return <span className="sla-chip purple">🔺 ESC-L{escalationLevel}</span>;
@@ -14,29 +16,128 @@ function SlaChip({ days, escalationLevel }: { days: number; escalationLevel?: nu
   return <span className="sla-chip green">🟢 {days}d left</span>;
 }
 
-function RouteStepper({ route, current, status }: { route: string; current: string; status: string }) {
+function RouteStepper({
+  route,
+  current,
+  status,
+  assignedName,
+  daysLeft,
+}: {
+  route: string;
+  current: string;
+  status: string;
+  assignedName?: string;
+  daysLeft?: number;
+}) {
   const stages: readonly string[] = (ROUTES as Record<string, readonly string[]>)[route] ?? [];
-  const currentIdx = stages.indexOf(current);
+  const mapKey = current === "RE_SCRUTINY" ? "SCRUTINY" : current;
+  const currentIdx = stages.indexOf(mapKey);
 
   return (
     <div className="stage-tracker">
       {stages.map((stage, i) => {
         const isDone = i < currentIdx || (i === currentIdx && (status === "COMPLETED" || status === "DECIDED"));
         const isCurrent = i === currentIdx && status !== "COMPLETED" && status !== "DECIDED";
+        const meta = STAGES[stage];
+        const label =
+          current === "RE_SCRUTINY" && stage === "SCRUTINY" && isCurrent
+            ? "Re-Scrutiny"
+            : (meta?.label ?? stage);
         return (
           <div key={stage} className="stage-step">
             <div className="stage-step-wrap">
               <div className={`stage-dot ${isDone ? "done" : isCurrent ? "current" : "future"}`}>
                 {isDone ? "✓" : i + 1}
               </div>
-              <div className="stage-label" title={STAGES[stage]?.label ?? stage}>
-                {STAGES[stage]?.label ?? stage}
+              <div className="stage-label" title={meta?.subtitle ?? label}>
+                {label}
               </div>
+              {meta?.subtitle && (
+                <div style={{ fontSize: 10, color: "#94a3b8", maxWidth: 96, textAlign: "center", lineHeight: 1.25 }}>
+                  {current === "RE_SCRUTINY" && stage === "SCRUTINY" && isCurrent
+                    ? STAGES.RE_SCRUTINY?.subtitle
+                    : meta.subtitle}
+                </div>
+              )}
+              {isCurrent && assignedName && (
+                <div style={{ fontSize: 10, color: "#1e40af", marginTop: 2, fontWeight: 600 }}>
+                  {assignedName.split("–")[0].trim()}
+                  {typeof daysLeft === "number" && daysLeft < 900 ? ` · ${daysLeft}d` : ""}
+                </div>
+              )}
             </div>
             {i < stages.length - 1 && <div className={`stage-line ${isDone ? "done" : ""}`} />}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function DualClockBar({ officerDays, institutionDays }: { officerDays: number; institutionDays: number }) {
+  const total = Math.max(1, officerDays + institutionDays);
+  const officerPct = Math.round((officerDays / total) * 100);
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card-title" style={{ marginBottom: 8 }}>Dual-Clock Accountability</div>
+      <p style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>
+        Who held the file: AICTE officer processing vs institution deficiency response time.
+      </p>
+      <div style={{ display: "flex", height: 22, borderRadius: 6, overflow: "hidden", background: "#e2e8f0" }}>
+        <div style={{ width: `${officerPct}%`, background: "#2563eb", transition: "width 0.3s" }} title={`Officer ${officerDays}d`} />
+        <div style={{ width: `${100 - officerPct}%`, background: "#f59e0b", transition: "width 0.3s" }} title={`Institution ${institutionDays}d`} />
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 13 }}>
+        <span style={{ color: "#1e40af", fontWeight: 600 }}>🟦 AICTE Officer: {officerDays} days</span>
+        <span style={{ color: "#b45309", fontWeight: 600 }}>🟧 Institution: {institutionDays} days</span>
+      </div>
+    </div>
+  );
+}
+
+function AphNormsCard({ metricsJson }: { metricsJson: string | null }) {
+  const metrics = parseMetrics(metricsJson);
+  if (!metrics) {
+    return (
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-title">APH Norms Compliance Check</div>
+        <p style={{ fontSize: 13, color: "#64748b" }}>No metrics submitted for this application.</p>
+      </div>
+    );
+  }
+  const checks = evaluateAph(metrics);
+  const passCount = checks.filter((c) => c.pass).length;
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+        <div className="card-title" style={{ margin: 0 }}>APH Norms Compliance Check</div>
+        <span className={`badge ${passCount === checks.length ? "badge-green" : "badge-amber"}`}>
+          {passCount}/{checks.length} pass
+        </span>
+      </div>
+      <p style={{ fontSize: 11, color: "#64748b", marginBottom: 12 }}>{APH_NORMS.label}</p>
+      <div style={{ display: "grid", gap: 8 }}>
+        {checks.map((c) => (
+          <div
+            key={c.key}
+            style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "flex-start",
+              padding: "10px 12px",
+              borderRadius: 8,
+              background: c.pass ? "#ecfdf5" : "#fef2f2",
+              border: `1px solid ${c.pass ? "#a7f3d0" : "#fecaca"}`,
+            }}
+          >
+            <span style={{ fontSize: 16 }}>{c.pass ? "✅" : "❌"}</span>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 13, color: c.pass ? "#065f46" : "#991b1b" }}>{c.label}</div>
+              <div style={{ fontSize: 12, color: "#475569" }}>{c.detail}</div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -67,50 +168,65 @@ export default async function ApplicationDetailPage({
 
   if (!app) notFound();
 
-  // Scope check
   if (user.role === "INSTITUTION" && app.institutionId !== user.institutionId) notFound();
   if (user.role === "REGIONAL_OFFICER" && app.regionId !== user.regionId) notFound();
 
   const currentDeadline = app.deadlineItems.find((d) => d.state === "OPEN" && d.kind === "STAGE_TIMELINE");
   const days = currentDeadline ? differenceInCalendarDays(currentDeadline.dueAt, now) : 999;
+  const dual = computeDualClock(app.stages, app.status, app.stageEnteredAt, now);
 
   return (
     <div>
-      {/* Header */}
       <div style={{ marginBottom: 20 }}>
         <Link href="/applications" style={{ color: "#64748b", fontSize: 13 }}>← Applications</Link>
         <div className="page-header" style={{ marginTop: 8, marginBottom: 0 }}>
           <div>
-            <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               {app.refNo}
               <SlaChip days={days} escalationLevel={currentDeadline?.escalationLevel ?? 0} />
               <span className={`badge ${app.status === "RETURNED" ? "badge-amber" : app.status === "DECIDED" ? "badge-green" : "badge-blue"}`}>{app.status}</span>
             </h1>
-            <p className="page-subtitle">{app.institution.name} • {app.applicationType.replace("_", " ")} • Route: {app.route.replace("_", " ")}</p>
+            <p className="page-subtitle">
+              {app.institution.name} • {app.applicationType.replace(/_/g, " ")} •{" "}
+              {app.applicationType === "EXTENSION" ? "EoA (annual license renewal)" : "APH workflow route"}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Route stepper */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-title" style={{ marginBottom: 16 }}>Application Route</div>
-        <RouteStepper route={app.route} current={app.currentStageKey} status={app.status} />
-        <div style={{ marginTop: 12, fontSize: 13, color: "#64748b", display: "flex", gap: 24 }}>
-          <span>Current Stage: <strong style={{ color: "#1e3a5f" }}>{STAGES[app.currentStageKey]?.label ?? app.currentStageKey}</strong></span>
+        <RouteStepper
+          route={app.route}
+          current={app.currentStageKey}
+          status={app.status}
+          assignedName={app.assignedTo?.name}
+          daysLeft={days}
+        />
+        <div style={{ marginTop: 12, fontSize: 13, color: "#64748b", display: "flex", gap: 24, flexWrap: "wrap" }}>
+          <span>
+            Current Stage:{" "}
+            <strong style={{ color: "#1e3a5f" }}>
+              {STAGES[app.currentStageKey]?.label ?? app.currentStageKey}
+            </strong>
+            {STAGES[app.currentStageKey]?.subtitle && (
+              <span style={{ color: "#94a3b8" }}> — {STAGES[app.currentStageKey].subtitle}</span>
+            )}
+          </span>
           <span>Assigned to: <strong>{app.assignedTo?.name ?? "Unassigned"}</strong></span>
           {currentDeadline && <span>Deadline: <strong>{new Date(currentDeadline.dueAt).toLocaleDateString()}</strong></span>}
         </div>
       </div>
 
-      {/* Action Panel */}
+      <DualClockBar officerDays={dual.officerDays} institutionDays={dual.institutionDays} />
+      <AphNormsCard metricsJson={app.metricsJson} />
+
       <ActionPanel app={{ id: app.id, refNo: app.refNo, currentStageKey: app.currentStageKey, status: app.status, route: app.route }} user={{ role: user.role, id: user.id }} />
 
-      {/* Tabs (simplified as sections) */}
       <div className="grid-2" style={{ gap: 16 }}>
-        {/* Timeline */}
         <div className="card">
           <div className="card-title" style={{ marginBottom: 12 }}>📅 Stage Timeline</div>
-          {app.stages.map((s, i) => (
+          {app.stages.map((s) => (
             <div key={s.id} style={{ display: "flex", gap: 12, padding: "8px 0", borderBottom: "1px solid #f0f4f8" }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.exitedAt ? "#22c55e" : "#2a5298", flexShrink: 0, marginTop: 6 }} />
               <div style={{ flex: 1 }}>
@@ -126,7 +242,6 @@ export default async function ApplicationDetailPage({
           ))}
         </div>
 
-        {/* Observations */}
         <div className="card">
           <div className="card-title" style={{ marginBottom: 12 }}>💬 Observations</div>
           {app.observations.length === 0 && <p style={{ fontSize: 13, color: "#64748b" }}>No observations yet.</p>}
@@ -142,7 +257,6 @@ export default async function ApplicationDetailPage({
         </div>
       </div>
 
-      {/* Deadlines */}
       <div className="card" style={{ marginTop: 16 }}>
         <div className="card-title" style={{ marginBottom: 12 }}>⏰ All Deadlines</div>
         <table className="data-table">
@@ -162,7 +276,6 @@ export default async function ApplicationDetailPage({
         </table>
       </div>
 
-      {/* Institution info */}
       <div className="card" style={{ marginTop: 16 }}>
         <div className="card-title" style={{ marginBottom: 12 }}>🏫 Institution Details</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, fontSize: 13 }}>
@@ -182,7 +295,6 @@ export default async function ApplicationDetailPage({
         </div>
       </div>
 
-      {/* Case Summary link */}
       <div style={{ marginTop: 16 }}>
         <a href={`/api/applications/${app.id}/summary`} target="_blank" className="btn btn-secondary">
           📄 View Case Summary

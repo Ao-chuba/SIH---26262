@@ -164,10 +164,23 @@ export function DocumentTable({
                     <td><span className="badge badge-blue">{doc.docType.replace("_", " ")}</span></td>
                     <td>{doc.title}</td>
                     <td>{new Date(doc.validUntil).toLocaleDateString()}</td>
-                    <td>
-                      <span className={`sla-chip ${days < 0 ? "red" : days <= 30 ? "red" : days <= 90 ? "amber" : "green"}`}>
-                        {days < 0 ? `${Math.abs(days)}d expired` : `${days}d left`}
-                      </span>
+                    <td style={{ minWidth: 160 }}>
+                      <div style={{ marginBottom: 4 }}>
+                        <span className={`sla-chip ${days < 0 ? "red" : days <= 30 ? "red" : days <= 90 ? "amber" : "green"}`}>
+                          {days < 0 ? `${Math.abs(days)}d expired` : `${days}d left`}
+                        </span>
+                      </div>
+                      <div
+                        className="validity-bar"
+                        title={days < 0 ? "Expired" : `${days} days remaining`}
+                      >
+                        <div
+                          className={`validity-bar-fill ${days < 0 ? "expired" : days <= 30 ? "critical" : days <= 90 ? "warn" : "ok"}`}
+                          style={{
+                            width: `${days < 0 ? 100 : Math.min(100, Math.max(4, (days / 365) * 100))}%`,
+                          }}
+                        />
+                      </div>
                     </td>
                     <td>
                       {doc.status === "RENEWAL_SUBMITTED" ? (

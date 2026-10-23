@@ -3,7 +3,8 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { routeApplication } from "@/lib/workflow/workflow";
 import { appendAudit } from "@/lib/audit";
-import { ROUTES, APP_TYPE_ROUTE_MAP } from "@/config/rules";
+import { APP_TYPE_ROUTE_MAP } from "@/config/rules";
+import { buildMetrics } from "@/lib/aph";
 import { z } from "zod";
 
 export async function GET(request: NextRequest) {
@@ -31,6 +32,8 @@ export async function GET(request: NextRequest) {
 const createSchema = z.object({
   applicationType: z.enum(["NEW_INSTITUTION", "NEW_COURSE", "EXTENSION", "INTAKE_INCREASE", "CLOSURE", "OTHER"]),
   details: z.string().optional(),
+  studentIntake: z.number().int().positive().optional(),
+  facultyCount: z.number().int().nonnegative().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -42,12 +45,18 @@ export async function POST(request: NextRequest) {
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const { applicationType } = parsed.data;
+  const { applicationType, studentIntake, facultyCount } = parsed.data;
   const institutionId = user.institutionId!;
   const institution = await prisma.institution.findUniqueOrThrow({ where: { id: institutionId } });
 
   const route = APP_TYPE_ROUTE_MAP[applicationType] ?? "ONLY_SCRUTINY";
   const refNo = `APP-${Date.now().toString().slice(-8)}`;
+  const metrics = buildMetrics(studentIntake ?? 60, true);
+  if (typeof facultyCount === "number") metrics.facultyCount = facultyCount;
+  if (typeof studentIntake === "number") {
+    metrics.studentIntake = studentIntake;
+    metrics.requiredLabAreaSqm = Math.ceil(studentIntake * 5);
+  }
 
   const app = await prisma.application.create({
     data: {
@@ -58,6 +67,7 @@ export async function POST(request: NextRequest) {
       route,
       currentStageKey: "SCRUTINY",
       status: "IN_PROGRESS",
+      metricsJson: JSON.stringify(metrics),
       stageEnteredAt: new Date(),
     },
   });

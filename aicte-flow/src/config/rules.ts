@@ -16,14 +16,25 @@ export const ROUTES = {
 
 export type RouteKey = keyof typeof ROUTES;
 
-export const STAGES: Record<string, { label: string; ownerRole: string; timelineDays: number }> = {
-  SCRUTINY:         { label: "Scrutiny",            ownerRole: "REGIONAL_OFFICER",  timelineDays: 15 },
-  RE_SCRUTINY:      { label: "Re-Scrutiny",         ownerRole: "REGIONAL_OFFICER",  timelineDays: 7  },
-  EVC_QUEUE:        { label: "EVC Queue",           ownerRole: "REGIONAL_OFFICER",  timelineDays: 5  },
-  EVC_SCHEDULED:    { label: "EVC Scheduled",       ownerRole: "EVC_COMMITTEE",     timelineDays: 20 },
-  EVC_REPORT:       { label: "EVC Report Review",   ownerRole: "REGIONAL_OFFICER",  timelineDays: 7  },
-  SAC_SHC:          { label: "SAC/SHC",             ownerRole: "SAC_SHC_MEMBER",    timelineDays: 10 },
-  DECISION_PENDING: { label: "Decision Pending",    ownerRole: "BUREAU_OFFICER",    timelineDays: 10 },
+export const STAGES: Record<string, { label: string; ownerRole: string; timelineDays: number; subtitle?: string }> = {
+  SCRUTINY:         { label: "Scrutiny",            ownerRole: "REGIONAL_OFFICER",  timelineDays: 15, subtitle: "Document & APH norm verification" },
+  RE_SCRUTINY:      { label: "Re-Scrutiny",         ownerRole: "REGIONAL_OFFICER",  timelineDays: 7,  subtitle: "Review after institution reply" },
+  EVC_QUEUE:        { label: "EVC Queue",           ownerRole: "REGIONAL_OFFICER",  timelineDays: 5,  subtitle: "Awaiting inspection scheduling" },
+  EVC_SCHEDULED:    { label: "EVC Scheduled",       ownerRole: "EVC_COMMITTEE",     timelineDays: 20, subtitle: "Expert Visit (campus inspection)" },
+  EVC_REPORT:       { label: "EVC Report Review",   ownerRole: "REGIONAL_OFFICER",  timelineDays: 7,  subtitle: "Inspection report review" },
+  SAC_SHC:          { label: "SAC/SHC",             ownerRole: "SAC_SHC_MEMBER",    timelineDays: 10, subtitle: "Standing Appellate / Hearing Committee" },
+  DECISION_PENDING: { label: "Decision Pending",    ownerRole: "BUREAU_OFFICER",    timelineDays: 10, subtitle: "Competent authority decision (human)" },
+};
+
+/** APH-style norms for assistive pass/fail checks (not auto-decisions). */
+export const APH_NORMS = {
+  facultyStudentRatio: 20, // 1:20
+  cadreProfessor: 1,
+  cadreAssociate: 2,
+  cadreAssistant: 6,
+  intakeMultiples: [30, 60] as number[],
+  labAreaSqmPerStudent: 5, // illustrative built-up lab area heuristic for demo
+  label: "AICTE APH-aligned norms (assistive; not a statutory decision)",
 };
 
 export const EVC_NEW_INSTITUTION_DAYS = 30;

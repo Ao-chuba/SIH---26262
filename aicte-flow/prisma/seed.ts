@@ -8,6 +8,7 @@ import {
   EVC_NEW_INSTITUTION_DAYS,
   RESPONSE_WINDOW_DAYS,
 } from "../src/config/rules";
+import { buildMetrics } from "../src/lib/aph";
 import { differenceInCalendarDays } from "date-fns";
 
 const prisma = new PrismaClient();
@@ -264,9 +265,13 @@ async function main() {
     stageEnteredDaysAgo: number;
     assignedToId?: string;
     isDemo?: boolean;
+    metricsCompliant?: boolean;
+    intake?: number;
+    withReturnHistory?: boolean;
   }) {
     const submittedAt = daysAgo(opts.submittedDaysAgo);
     const stageEnteredAt = daysAgo(opts.stageEnteredDaysAgo);
+    const metrics = buildMetrics(opts.intake ?? 60, opts.metricsCompliant !== false);
 
     const app = await prisma.application.create({
       data: {
@@ -278,10 +283,66 @@ async function main() {
         currentStageKey: opts.currentStageKey,
         status: opts.status as "IN_PROGRESS" | "RETURNED" | "COMPLETED" | "DECIDED",
         assignedToId: opts.assignedToId,
+        metricsJson: JSON.stringify(metrics),
         submittedAt,
         stageEnteredAt,
       },
     });
+
+    // Seed stage history for dual-clock / timeline demos
+    const routeStages: string[] = [...ROUTES[opts.route]];
+    const currentIdx = Math.max(0, routeStages.indexOf(opts.currentStageKey));
+    let cursor = new Date(submittedAt);
+    for (let i = 0; i < currentIdx; i++) {
+      const entered = new Date(cursor);
+      const exited = new Date(entered.getTime() + (3 + (i % 3)) * 86400000);
+      await prisma.applicationStage.create({
+        data: {
+          applicationId: app.id,
+          stageKey: routeStages[i],
+          enteredAt: entered,
+          exitedAt: exited,
+          outcome: "ADVANCED",
+          enteredById: opts.assignedToId,
+        },
+      });
+      cursor = exited;
+    }
+    if (opts.withReturnHistory) {
+      const entered = daysAgo(opts.stageEnteredDaysAgo + 10);
+      const exited = daysAgo(opts.stageEnteredDaysAgo + 4);
+      await prisma.applicationStage.create({
+        data: {
+          applicationId: app.id,
+          stageKey: "SCRUTINY",
+          enteredAt: entered,
+          exitedAt: exited,
+          outcome: "RETURNED",
+          enteredById: opts.assignedToId,
+          notes: "Deficiency return (seeded)",
+        },
+      });
+      await prisma.applicationStage.create({
+        data: {
+          applicationId: app.id,
+          stageKey: "RE_SCRUTINY",
+          enteredAt: daysAgo(opts.stageEnteredDaysAgo + 1),
+          exitedAt: null,
+          enteredById: opts.assignedToId,
+        },
+      });
+    } else {
+      await prisma.applicationStage.create({
+        data: {
+          applicationId: app.id,
+          stageKey: opts.currentStageKey,
+          enteredAt: stageEnteredAt,
+          exitedAt: opts.status === "COMPLETED" || opts.status === "DECIDED" ? DEMO_TODAY : null,
+          outcome: opts.status === "COMPLETED" || opts.status === "DECIDED" ? "COMPLETED" : null,
+          enteredById: opts.assignedToId,
+        },
+      });
+    }
 
     // Stage timeline deadline
     const stageTimeline = STAGES[opts.currentStageKey]?.timelineDays ?? 10;
@@ -336,12 +397,15 @@ async function main() {
     regionId: demoInst.regionId,
     applicationType: "NEW_INSTITUTION",
     route: "SCRUTINY_EVC_SAC_SHC",
-    currentStageKey: "SCRUTINY",
+    currentStageKey: "RE_SCRUTINY",
     status: "IN_PROGRESS",
-    submittedDaysAgo: 5,
-    stageEnteredDaysAgo: 5,
+    submittedDaysAgo: 14,
+    stageEnteredDaysAgo: 1,
     assignedToId: demoRegionROs[0]?.id,
     isDemo: true,
+    metricsCompliant: false,
+    intake: 120,
+    withReturnHistory: true,
   });
   applications.push(demoApp1.id);
 

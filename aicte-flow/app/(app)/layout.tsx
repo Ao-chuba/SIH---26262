@@ -46,8 +46,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/admin", icon: "⚙️", label: "Admin", roles: ["ADMIN"] },
   ].filter((item) => item.roles.includes("all") || item.roles.includes(user.role));
 
+  const roleAccent =
+    user.role === "INSTITUTION"
+      ? "#059669"
+      : user.role === "REGIONAL_OFFICER"
+        ? "#1e40af"
+        : user.role === "BUREAU_OFFICER"
+          ? "#7c3aed"
+          : user.role === "EVC_COMMITTEE" || user.role === "SAC_SHC_MEMBER"
+            ? "#d97706"
+            : "#475569";
+
   return (
-    <div>
+    <div data-role={user.role}>
+      <div className="role-accent-stripe" style={{ background: roleAccent }} />
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-logo">
@@ -90,11 +102,27 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         )}
 
+        <div
+          className="role-persona-badge"
+          style={{
+            background: `${roleAccent}14`,
+            border: `1px solid ${roleAccent}55`,
+            color: roleAccent,
+            fontSize: 11,
+            fontWeight: 700,
+            padding: "4px 10px",
+            borderRadius: 999,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {user.role.replace(/_/g, " ")}
+        </div>
+
         <div className="user-switcher">
           <form action={switchUser} style={{ display: "flex", gap: 6 }}>
-            <select name="userId" style={{ fontSize: 12, padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: 6, background: "#fff", cursor: "pointer", maxWidth: 220 }}>
+            <select name="userId" defaultValue={user.id} style={{ fontSize: 12, padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: 6, background: "#fff", cursor: "pointer", maxWidth: 220 }}>
               {allUsers.map((u) => (
-                <option key={u.id} value={u.id} selected={u.id === user.id}>
+                <option key={u.id} value={u.id}>
                   [{u.role.split("_")[0]}] {u.name.split("–")[0].trim()}
                 </option>
               ))}
