@@ -495,32 +495,30 @@ aicte-flow/
 - Always show empty states and loading skeletons; never show raw JSON or stack traces to users.
 - Clock badge in the top bar whenever the simulated date is active, so nobody is confused during the demo.
 
----
-
-## 19. NEXT BUILD — POST-PROTOTYPE ENHANCEMENTS (phases 1–9 already shipped in `aicte-flow/`)
-
-Phases 1–9 are done on `main`. Build the items below in order. Do not recreate the scaffold. Prefer editing existing pages/components. Keep `npm run dev` runnable after each item. Mark each checkbox done in this file when complete. Update `aicte-flow/DEMO_SCRIPT.md` and `aicte-flow/README.md` only after the related UI ships (do not claim unfinished features).
-
-### Rules honesty (judge Q&A)
-
-| Kind | Examples | How we treat them |
-|---|---|---|
-| APH-style norms (assistive checks) | Faculty–student ≥ 1:20; cadre 1:2:6; intake multiples of 30/60 | Encode as labelled norms on the application; pass/fail badges only — **never** auto-approve/reject |
-| Operational SLAs (placeholders) | Scrutiny 15d, reminders T-30/T-7, escalation ladders | Stay in `RuleConfig` / Admin editor; banner: illustrative, configure per current APH calendar |
-
-### Build checklist
-
-- [ ] **19.1 APH Compliance Snapshot** — Add `metricsJson` (String/JSON) on `Application`: `{ studentIntake, facultyCount, requiredFaculty, labAreaSqm, requiredLabAreaSqm, professors?, associates?, assistants? }`. Seed realistic values on golden demos + a sample of apps. On `/applications/[id]`, render **APH Norms Compliance Check** with pass/fail for ratio 1:20, intake multiple 30/60, cadre 1:2:6 (if counts present), lab area vs required. Label: assistive for scrutiny; not a statutory decision.
-- [ ] **19.2 Dual-Clock Accountability Bar** — From `ApplicationStage` (+ RETURNED institution windows), show on app detail header: **AICTE processing days** vs **Institution deficiency-response days**. Simple split bar + numbers.
-- [ ] **19.3 Audit Tamper Demo** — Admin-only on `/audit`: **Simulate Tamper** (mutate one `AuditLog.payload` without updating `hash`) so Verify shows ❌ Broken at seq N; **Restore** repairs it. Keep chain verify as today.
-- [ ] **19.4 UI distinction (light GovTech)** — Keep light mode (`#F8FAFC` / navy primary). Enrich existing stepper with plain-English stage subtitles (no raw enums). Battery-style validity bars on `/documents` (and undertakings countdown if easy). After clock +1/+7/+30, show a **Simulation Impact Summary** (reminders / overdue / escalations with links), not only a toast. Subtle role accent on persona/switcher so judges see whose screen it is.
-- [ ] **19.5 Docs sync** — Refresh `aicte-flow/DEMO_SCRIPT.md` demo beats for 19.1–19.4; light touch on `aicte-flow/README.md` feature list; tick checkboxes here.
-
-### Out of scope for this pass
-
-Live SMS/email gateways, real SSO, DigiLocker, PointNet/OCR-as-core, dark/neon themes, claiming official APH calendar day counts as fixed law.
+  HIGH-DISTINCTION UI/UX & GOVTECH DESIGN SYSTEM (CRITICAL FOR DEMO)
+1. Visual Theme ("Modern GovTech 2.0"):
+   - Strictly LIGHT MODE with a crisp `#F8FAFC` background, pure white `#FFFFFF` cards with subtle `#E2E8F0` borders and soft shadows. Never use dark/cyberpunk themes.
+   - Top thin header stripe in subtle Indian GovTech tricolor/saffron-navy gradient, paired with a deep Royal Navy (`#1E3A8A`) primary brand color.
+   - Distinct Role Persona Accents: Top persona banner changes subtle badge/accent tint per active role (Emerald for Institution, Royal Blue for Regional Officer, Purple for Bureau Officer, Amber for EVC Committee, Slate for Admin) so viewers immediately know whose screen they are looking at.
+2. Self-Explanatory Plain-English Subtitles:
+   - Never show raw enum strings like `SCRUTINY_EVC_SAC_SHC` to users. Always display human-friendly titles with micro-subtitles explaining AICTE jargon:
+     * `Scrutiny` -> "Document & APH Norm Verification"
+     * `EVC Visit` -> "Expert Visit Committee (Physical Campus Inspection)"
+     * `SAC / SHC` -> "Standing Appellate / Hearing Committee (Appeal Review)"
+     * `EoA` -> "Extension of Approval (Annual License Renewal)"
+3. Signature Visual Components (Must Build):
+   - `<RouteStepper />`: A horizontal Amazon/Domino's-style subway map on `/applications/[id]` showing completed stages (green check + days taken), active stage (pulsing blue ring + assigned officer name + SLA countdown), and upcoming stages.
+   - `<DualClockBar />`: A split horizontal progress bar comparing "AICTE Officer Processing Days" (Blue) vs "Institution Deficiency Delay Days" (Orange) for instant bottleneck accountability.
+   - `<AphNormsCard />`: A visual checklist card on `/applications/[id]` citing official AICTE APH 2024-27 rules: Faculty-Student Ratio (1:20 norm), Cadre Ratio (1:2:6), Intake Multiples (30/60 seats), and Built-up Lab Area, with instant Pass/Deficiency badges.
+   - `<ValidityProgressBar />`: Battery-style visual depletion bars on `/documents` and `/undertakings` showing remaining validity in Green (>60d), Amber (<=30d), or Red (Expired).
+   - `<SimulationSummaryModal />`: When clicking `+1d`, `+7d`, or `+30d` on the top-bar clock, display a rich visual summary card listing exact reminders fired, items turned overdue, and escalations triggered, with one-click links to inspect them.
 
 ---
 
-**Phases 1–9:** already built — do not restart from Phase 1.  
-**Next:** implement Section 19 in order, commit meaningfully when asked.
+19. ADDENDUM — HIGH-IMPACT DEMO ENHANCEMENTS (INCLUDE IN BUILD)
+1. APH Compliance Snapshot (Section 4 & 8.3): Add a `metricsJson` (String/JSON) field on `Application` containing `{ studentIntake, facultyCount, requiredFaculty, labAreaSqm, requiredLabAreaSqm }`. On `/applications/[id]`, render an "APH Norms Compliance Check" card showing automated pass/fail badges for Faculty-Student Ratio (1:20 norm) and Infrastructure readiness to assist the Scrutiny Officer.
+2. Dual-Clock Accountability Bar (Section 8.3): On the `/applications/[id]` header, calculate and display two counters from `ApplicationStage` history: "AICTE Processing Time (Days)" vs "Institution Deficiency Response Time (Days)" so bottleneck accountability is immediately visible.
+3. Audit Tamper Demo Toggle (Section 8.10): On `/audit`, next to "Verify chain integrity", add an Admin-only "Simulate Tamper" button that mutates one record's payload directly in the DB (causing verification to fail with ❌ Broken at seq #N) and a "Restore" button that repairs it.
+4. Fast Seeding: In `prisma/seed.ts`, wrap seeded inserts inside `prisma.$transaction` batches so `npm run seed` completes in under 5 seconds on SQLite.
+
+**START NOW with Phase 1. Do not wait for confirmation. Commit after every phase and keep the app runnable at all times.**
