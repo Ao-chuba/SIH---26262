@@ -497,4 +497,10 @@ aicte-flow/
 
 ---
 
+19. ADDENDUM — HIGH-IMPACT DEMO ENHANCEMENTS (INCLUDE IN BUILD)
+1. APH Compliance Snapshot (Section 4 & 8.3): Add a `metricsJson` (String/JSON) field on `Application` containing `{ studentIntake, facultyCount, requiredFaculty, labAreaSqm, requiredLabAreaSqm }`. On `/applications/[id]`, render an "APH Norms Compliance Check" card showing automated pass/fail badges for Faculty-Student Ratio (1:20 norm) and Infrastructure readiness to assist the Scrutiny Officer.
+2. Dual-Clock Accountability Bar (Section 8.3): On the `/applications/[id]` header, calculate and display two counters from `ApplicationStage` history: "AICTE Processing Time (Days)" vs "Institution Deficiency Response Time (Days)" so bottleneck accountability is immediately visible.
+3. Audit Tamper Demo Toggle (Section 8.10): On `/audit`, next to "Verify chain integrity", add an Admin-only "Simulate Tamper" button that mutates one record's payload directly in the DB (causing verification to fail with ❌ Broken at seq #N) and a "Restore" button that repairs it.
+4. Fast Seeding: In `prisma/seed.ts`, wrap seeded inserts inside `prisma.$transaction` batches so `npm run seed` completes in under 5 seconds on SQLite.
+
 **START NOW with Phase 1. Do not wait for confirmation. Commit after every phase and keep the app runnable at all times.**
