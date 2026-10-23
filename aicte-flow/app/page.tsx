@@ -93,14 +93,15 @@ export default async function LoginPage() {
             style={{
               fontSize: 11,
               fontFamily: "var(--font-mono)",
-              background: "var(--highlighter-yellow)",
+              background: "var(--accent-blue)",
               color: "var(--forest)",
-              padding: "2px 8px",
+              padding: "3px 10px",
               borderRadius: "9999px",
               fontWeight: 700,
+              letterSpacing: "0.04em",
             }}
           >
-            SIH-26262
+            e-Governance
           </span>
         </div>
 
@@ -111,7 +112,8 @@ export default async function LoginPage() {
           <span
             style={{
               padding: "6px 16px",
-              background: "var(--accent-blue)",
+              background: "var(--bg-subtle)",
+              border: "1.5px solid var(--border)",
               color: "var(--forest)",
               borderRadius: "9999px",
               fontSize: 12,
@@ -119,7 +121,7 @@ export default async function LoginPage() {
               fontFamily: "var(--font-mono)",
             }}
           >
-            [LIVE DEMO]
+            National Portal
           </span>
         </div>
       </header>
@@ -132,7 +134,7 @@ export default async function LoginPage() {
               display: "inline-block",
               background: "var(--accent-blue)",
               color: "var(--forest)",
-              padding: "6px 18px",
+              padding: "6px 20px",
               borderRadius: "9999px",
               fontSize: 12,
               fontWeight: 700,
@@ -141,7 +143,7 @@ export default async function LoginPage() {
               letterSpacing: "0.04em",
             }}
           >
-            [!] STATUTORY APPROVAL PROCESS AUTOMATION
+            AICTE APPROVAL WORKFLOW &amp; COMPLIANCE SYSTEM
           </div>
 
           <h1
@@ -299,36 +301,7 @@ export default async function LoginPage() {
           </div>
         </div>
 
-        {/* Jury 60-second cheat sheet */}
-        <div
-          className="card"
-          style={{
-            padding: "20px 24px",
-            background: "var(--highlighter-yellow)",
-            borderRadius: 16,
-            border: "1.5px solid var(--border)",
-            marginBottom: 24,
-          }}
-        >
-          <div style={{ fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: 13, marginBottom: 8, color: "var(--forest)" }}>
-            [JURY PATH] 5 minutes
-          </div>
-          <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--forest)", lineHeight: 1.55 }}>
-            <li>
-              Enter as <strong>Regional Officer</strong> -&gt; open <strong>DEMO-NEW-INST-001</strong> (APH norms + dual-clock).
-            </li>
-            <li>
-              Switch to <strong>Admin</strong> -&gt; <code>/admin</code> -&gt; <strong>+7 Days</strong> (Simulation Impact Summary).
-            </li>
-            <li>
-              Open <code>/audit</code> -&gt; Verify -&gt; Simulate Tamper -&gt; Restore.
-            </li>
-            <li>Point to the footer banner: automation assists; humans decide.</li>
-          </ol>
-          <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--forest)" }}>
-            Preferred accounts: <code>ro.central.alpha@demo.aicte</code> · <code>admin@demo.aicte</code>
-          </p>
-        </div>
+
 
         {/* Specific User Quick Selector */}
         <div
@@ -410,26 +383,32 @@ export default async function LoginPage() {
           </form>
         </div>
 
-        {/* Regulatory Disclaimer Notice */}
+        {/* Official Statutory Notice Footer */}
         <div
           style={{
-            padding: "14px 20px",
-            background: "var(--bg-subtle)",
+            padding: "16px 22px",
+            background: "var(--card-bg)",
             borderRadius: 14,
-            border: "1px dashed var(--border)",
+            border: "1.5px solid var(--border)",
             fontSize: 12,
             color: "var(--muted)",
             display: "flex",
             alignItems: "center",
-            gap: 12,
+            justifyContent: "space-between",
+            gap: 16,
+            flexWrap: "wrap",
           }}
         >
-          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: "var(--forest)" }}>
-            [!] STATUTORY NOTICE:
-          </span>
-          <span>
-            Demo system for SIH Problem Statement 26262. All data is synthetic. Timelines and SLA parameters are
-            configurable to match AICTE Approval Process Handbook (APH) regulations.
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: "var(--forest)" }}>
+              [NOTICE]
+            </span>
+            <span>
+              All approval workflows, stage SLAs, and inspections are administered pursuant to AICTE Approval Process Handbook (APH) statutory regulations.
+            </span>
+          </div>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted)" }}>
+            All India Council for Technical Education • New Delhi
           </span>
         </div>
       </main>
