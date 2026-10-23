@@ -315,13 +315,13 @@ export default async function LoginPage() {
           </div>
           <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--forest)", lineHeight: 1.55 }}>
             <li>
-              Enter as <strong>Regional Officer</strong> → open <strong>DEMO-NEW-INST-001</strong> (APH norms + dual-clock).
+              Enter as <strong>Regional Officer</strong> -&gt; open <strong>DEMO-NEW-INST-001</strong> (APH norms + dual-clock).
             </li>
             <li>
-              Switch to <strong>Admin</strong> → <code>/admin</code> → <strong>+7 Days</strong> (Simulation Impact Summary).
+              Switch to <strong>Admin</strong> -&gt; <code>/admin</code> -&gt; <strong>+7 Days</strong> (Simulation Impact Summary).
             </li>
             <li>
-              Open <code>/audit</code> → Verify → Simulate Tamper → Restore.
+              Open <code>/audit</code> -&gt; Verify -&gt; Simulate Tamper -&gt; Restore.
             </li>
             <li>Point to the footer banner: automation assists; humans decide.</li>
           </ol>
