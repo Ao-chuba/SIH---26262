@@ -15,7 +15,15 @@ type User = {
   id: string;
 };
 
-export function ActionPanel({ app, user }: { app: Application; user: User }) {
+export function ActionPanel({
+  app,
+  user,
+  aphDeficiencyDraft = "",
+}: {
+  app: Application;
+  user: User;
+  aphDeficiencyDraft?: string;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showReturn, setShowReturn] = useState(false);
@@ -26,6 +34,8 @@ export function ActionPanel({ app, user }: { app: Application; user: User }) {
   const [showDecide, setShowDecide] = useState(false);
   const [decision, setDecision] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [showRefer, setShowRefer] = useState(false);
+  const [referReason, setReferReason] = useState("");
   const [error, setError] = useState("");
 
   const stageOwnerRoles: Record<string, string[]> = {
@@ -41,6 +51,10 @@ export function ActionPanel({ app, user }: { app: Application; user: User }) {
   const canAdvance = stageOwnerRoles[app.currentStageKey]?.includes(user.role);
   const canReturn = canAdvance && app.currentStageKey !== "DECISION_PENDING";
   const canDecide = (user.role === "BUREAU_OFFICER" || user.role === "ADMIN") && app.currentStageKey === "DECISION_PENDING";
+  const canRefer =
+    (user.role === "REGIONAL_OFFICER" || user.role === "BUREAU_OFFICER" || user.role === "ADMIN") &&
+    ["SCRUTINY", "RE_SCRUTINY", "EVC_QUEUE", "EVC_REPORT"].includes(app.currentStageKey) &&
+    (app.status === "IN_PROGRESS" || app.status === "RETURNED");
   const isInstitution = user.role === "INSTITUTION";
 
   async function doAdvance() {
@@ -97,6 +111,24 @@ export function ActionPanel({ app, user }: { app: Application; user: User }) {
     } finally { setLoading(false); }
   }
 
+  async function doRefer() {
+    if (referReason.trim().length < 10) { setError("Referral reason must be at least 10 characters"); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/applications/${app.id}/refer-sac-shc`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: referReason }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+      setShowRefer(false);
+      router.refresh();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error");
+    } finally { setLoading(false); }
+  }
+
   async function doReply(formData: FormData) {
     setLoading(true);
     setError("");
@@ -107,6 +139,14 @@ export function ActionPanel({ app, user }: { app: Application; user: User }) {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Error");
     } finally { setLoading(false); }
+  }
+
+  function openObserveWithAph() {
+    if (aphDeficiencyDraft) {
+      setObsKind("DEFICIENCY");
+      setObsText(aphDeficiencyDraft);
+    }
+    setShowObserve(true);
   }
 
   return (
@@ -125,6 +165,11 @@ export function ActionPanel({ app, user }: { app: Application; user: User }) {
             [&lt;-] Return with Reason
           </button>
         )}
+        {canRefer && (
+          <button className="btn btn-secondary" onClick={() => setShowRefer(true)} disabled={loading}>
+            [-&gt;] Refer to SAC/SHC
+          </button>
+        )}
         {canDecide && (
           <button className="btn btn-primary" onClick={() => setShowDecide(true)} disabled={loading}>
             [!] Record Decision
@@ -133,6 +178,11 @@ export function ActionPanel({ app, user }: { app: Application; user: User }) {
         <button className="btn btn-secondary" onClick={() => setShowObserve(true)} disabled={loading}>
           [+] Add Observation
         </button>
+        {aphDeficiencyDraft && (user.role === "REGIONAL_OFFICER" || user.role === "ADMIN") && (
+          <button className="btn btn-secondary" onClick={openObserveWithAph} disabled={loading}>
+            [APH] Prefill Deficiencies
+          </button>
+        )}
         {isInstitution && app.status === "RETURNED" && (
           <form onSubmit={(e) => { e.preventDefault(); doReply(new FormData(e.target as HTMLFormElement)); }} style={{ display: "flex", gap: 8, width: "100%", marginTop: 8 }}>
             <input name="text" className="form-input" placeholder="Type your reply / response..." required style={{ flex: 1 }} />
@@ -141,7 +191,6 @@ export function ActionPanel({ app, user }: { app: Application; user: User }) {
         )}
       </div>
 
-      {/* Return modal */}
       {showReturn && (
         <div className="modal-overlay" onClick={() => setShowReturn(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -153,6 +202,16 @@ export function ActionPanel({ app, user }: { app: Application; user: User }) {
               <label className="form-label">Reason for Return *</label>
               <textarea className="form-textarea" value={returnReason} onChange={(e) => setReturnReason(e.target.value)} placeholder="Describe the deficiency or reason for return (minimum 10 characters)..." style={{ minHeight: 100 }} />
             </div>
+            {aphDeficiencyDraft && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ marginBottom: 12 }}
+                onClick={() => setReturnReason(aphDeficiencyDraft)}
+              >
+                Use APH deficiency draft
+              </button>
+            )}
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={() => setShowReturn(false)}>Cancel</button>
               <button className="btn btn-danger" onClick={doReturn} disabled={loading || returnReason.trim().length < 10}>Return Application</button>
@@ -161,7 +220,31 @@ export function ActionPanel({ app, user }: { app: Application; user: User }) {
         </div>
       )}
 
-      {/* Observe modal */}
+      {showRefer && (
+        <div className="modal-overlay" onClick={() => setShowRefer(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">[-&gt;] Refer to SAC/SHC</div>
+            <div style={{ background: "#eff6ff", border: "1px solid #93c5fd", padding: "10px 12px", borderRadius: 6, fontSize: 12, color: "#1e3a5f", marginBottom: 16 }}>
+              Adaptive routing: the file moves to Standing Appellate / Hearing Committee. Route updates to include SAC/SHC if it did not already. Human referral only — not an approval.
+            </div>
+            <div className="form-group">
+              <label className="form-label">Reason for referral *</label>
+              <textarea
+                className="form-textarea"
+                value={referReason}
+                onChange={(e) => setReferReason(e.target.value)}
+                placeholder="Why this case needs SAC/SHC hearing (minimum 10 characters)..."
+                style={{ minHeight: 100 }}
+              />
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setShowRefer(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={doRefer} disabled={loading || referReason.trim().length < 10}>Refer to Hearing</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showObserve && (
         <div className="modal-overlay" onClick={() => setShowObserve(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -178,6 +261,16 @@ export function ActionPanel({ app, user }: { app: Application; user: User }) {
               <label className="form-label">Text *</label>
               <textarea className="form-textarea" value={obsText} onChange={(e) => setObsText(e.target.value)} placeholder="Enter observation text..." />
             </div>
+            {aphDeficiencyDraft && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ marginBottom: 12 }}
+                onClick={() => { setObsKind("DEFICIENCY"); setObsText(aphDeficiencyDraft); }}
+              >
+                Prefill from APH fails
+              </button>
+            )}
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={() => setShowObserve(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={doObserve} disabled={loading}>Add</button>
@@ -186,7 +279,6 @@ export function ActionPanel({ app, user }: { app: Application; user: User }) {
         </div>
       )}
 
-      {/* Decide modal */}
       {showDecide && (
         <div className="modal-overlay" onClick={() => setShowDecide(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>

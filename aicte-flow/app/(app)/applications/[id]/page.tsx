@@ -6,7 +6,7 @@ import { getNow } from "@/lib/clock";
 import Link from "next/link";
 import { ActionPanel } from "../ActionPanel";
 import { ROUTES, STAGES, APH_NORMS } from "@/config/rules";
-import { parseMetrics, evaluateAph } from "@/lib/aph";
+import { parseMetrics, evaluateAph, aphScore, formatAphDeficiencies } from "@/lib/aph";
 import { computeDualClock } from "@/lib/dualClock";
 
 function SlaChip({ days, escalationLevel }: { days: number; escalationLevel?: number }) {
@@ -107,13 +107,19 @@ function AphNormsCard({ metricsJson }: { metricsJson: string | null }) {
   }
   const checks = evaluateAph(metrics);
   const passCount = checks.filter((c) => c.pass).length;
+  const score = aphScore(metrics);
   return (
     <div className="card" style={{ marginBottom: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8, gap: 12, flexWrap: "wrap" }}>
         <div className="card-title" style={{ margin: 0 }}>APH Norms Compliance Check</div>
-        <span className={`badge ${passCount === checks.length ? "badge-green" : "badge-amber"}`}>
-          {passCount}/{checks.length} pass
-        </span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <span className={`badge ${score >= 75 ? "badge-green" : score >= 50 ? "badge-amber" : "badge-red"}`}>
+            Score {score}/100
+          </span>
+          <span className={`badge ${passCount === checks.length ? "badge-green" : "badge-amber"}`}>
+            {passCount}/{checks.length} pass
+          </span>
+        </div>
       </div>
       <p style={{ fontSize: 11, color: "#64748b", marginBottom: 12 }}>{APH_NORMS.label}</p>
       <div style={{ display: "grid", gap: 8 }}>
@@ -136,10 +142,18 @@ function AphNormsCard({ metricsJson }: { metricsJson: string | null }) {
             <div>
               <div style={{ fontWeight: 600, fontSize: 13, color: c.pass ? "#065f46" : "#991b1b" }}>{c.label}</div>
               <div style={{ fontSize: 12, color: "#475569" }}>{c.detail}</div>
+              <div style={{ fontSize: 11, color: "#64748b", marginTop: 2, fontFamily: "var(--font-mono)" }}>
+                {c.clause}
+              </div>
             </div>
           </div>
         ))}
       </div>
+      {score < 100 && (
+        <div style={{ marginTop: 12, padding: "10px 12px", background: "#fffbeb", border: "1px solid #fbbf24", borderRadius: 8, fontSize: 12, color: "#7c5c00" }}>
+          Assistive tip: use <strong>[APH] Prefill Deficiencies</strong> in Actions to draft an observation from failed checks. Officers must still review and save — no auto-decision.
+        </div>
+      )}
     </div>
   );
 }
@@ -176,6 +190,7 @@ export default async function ApplicationDetailPage({
   const currentDeadline = app.deadlineItems.find((d) => d.state === "OPEN" && d.kind === "STAGE_TIMELINE");
   const days = currentDeadline ? differenceInCalendarDays(currentDeadline.dueAt, now) : 999;
   const dual = computeDualClock(app.stages, app.status, app.stageEnteredAt, now);
+  const aphDeficiencyDraft = formatAphDeficiencies(parseMetrics(app.metricsJson));
 
   return (
     <div>
@@ -223,7 +238,11 @@ export default async function ApplicationDetailPage({
       <DualClockBar officerDays={dual.officerDays} institutionDays={dual.institutionDays} />
       <AphNormsCard metricsJson={app.metricsJson} />
 
-      <ActionPanel app={{ id: app.id, refNo: app.refNo, currentStageKey: app.currentStageKey, status: app.status, route: app.route }} user={{ role: user.role, id: user.id }} />
+      <ActionPanel
+        app={{ id: app.id, refNo: app.refNo, currentStageKey: app.currentStageKey, status: app.status, route: app.route }}
+        user={{ role: user.role, id: user.id }}
+        aphDeficiencyDraft={aphDeficiencyDraft}
+      />
 
       <div className="grid-2" style={{ gap: 16 }}>
         <div className="card">
