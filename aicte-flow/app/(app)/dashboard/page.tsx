@@ -1,11 +1,11 @@
-import { getCurrentUser } from "@/lib/auth";
+﻿import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { differenceInCalendarDays } from "date-fns";
 import { getNow } from "@/lib/clock";
 import { computeHealthScore } from "@/lib/aph";
 import Link from "next/link";
-import { JuryLaunchpad } from "../JuryLaunchpad";
+import { QuickLinks } from "../QuickLinks";
 
 function SlaChip({ days, escalationLevel }: { days: number; escalationLevel?: number }) {
   if (escalationLevel && escalationLevel > 0) {
@@ -22,7 +22,7 @@ export default async function DashboardPage() {
 
   const now = await getNow();
   const launchpad = (
-    <JuryLaunchpad
+    <QuickLinks
       userRole={user.role}
       regionId={user.regionId}
       institutionId={user.institutionId}
@@ -83,13 +83,13 @@ export default async function DashboardPage() {
         <div className="page-header">
           <div>
             <h1 className="page-title">Regional Dashboard</h1>
-            <p className="page-subtitle">{user.region?.name ?? ""} Region • {user.name}</p>
+            <p className="page-subtitle">{user.region?.name ?? ""} Region â€¢ {user.name}</p>
           </div>
         </div>
 
         <div className="kpi-grid">
           <div className="kpi-card"><div className="kpi-label">My Pending</div><div className="kpi-value">{pending}</div><div className="kpi-sub">Applications in progress</div></div>
-          <div className="kpi-card amber"><div className="kpi-label">Due ≤3 Days</div><div className="kpi-value" style={{ color: "#f59e0b" }}>{dueSoon}</div><div className="kpi-sub">Approaching deadline</div></div>
+          <div className="kpi-card amber"><div className="kpi-label">Due â‰¤3 Days</div><div className="kpi-value" style={{ color: "#f59e0b" }}>{dueSoon}</div><div className="kpi-sub">Approaching deadline</div></div>
           <div className="kpi-card red"><div className="kpi-label">Overdue</div><div className="kpi-value" style={{ color: "#ef4444" }}>{overdue}</div><div className="kpi-sub">Past stage deadline</div></div>
           <div className="kpi-card purple"><div className="kpi-label">Escalated</div><div className="kpi-value" style={{ color: "#a855f7" }}>{escalated}</div><div className="kpi-sub">Need urgent attention</div></div>
           <div className="kpi-card"><div className="kpi-label">EVC Queue</div><div className="kpi-value">{evcCount}</div><div className="kpi-sub">Awaiting scheduling</div></div>
@@ -101,7 +101,7 @@ export default async function DashboardPage() {
           <div className="card" style={{ marginBottom: 16 }}>
             <div className="card-header">
               <span className="card-title">Institution Compliance Health (region)</span>
-              <span style={{ fontSize: 11, color: "#64748b" }}>Assistive 0–100 · lowest first</span>
+              <span style={{ fontSize: 11, color: "#64748b" }}>Assistive 0â€“100 Â· lowest first</span>
             </div>
             <div style={{ display: "grid", gap: 8 }}>
               {regionHealth.map((row) => (
@@ -177,7 +177,7 @@ export default async function DashboardPage() {
         <div className="page-header">
           <div>
             <h1 className="page-title">Bureau Dashboard</h1>
-            <p className="page-subtitle">All Regions • {user.name}</p>
+            <p className="page-subtitle">All Regions â€¢ {user.name}</p>
           </div>
         </div>
 
@@ -307,7 +307,7 @@ export default async function DashboardPage() {
             <div>
               <div className="card-title" style={{ marginBottom: 4 }}>Compliance Health Score</div>
               <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
-                Year-round assistive score from latest APH metrics, document validity, and undertakings — not a statutory grade.
+                Year-round assistive score from latest APH metrics, document validity, and undertakings â€” not a statutory grade.
               </p>
             </div>
             <div style={{ textAlign: "right" }}>
@@ -365,7 +365,7 @@ export default async function DashboardPage() {
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, background: "var(--accent-blue)", padding: "2px 6px", borderRadius: 4 }}>[UT]</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{ut.title}</div>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>Undertaking • Due {ut.dueDate.toLocaleDateString()}</div>
+                  <div style={{ fontSize: 12, color: "#64748b" }}>Undertaking â€¢ Due {ut.dueDate.toLocaleDateString()}</div>
                 </div>
                 <SlaChip days={differenceInCalendarDays(ut.dueDate, now)} />
               </div>
@@ -375,7 +375,7 @@ export default async function DashboardPage() {
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, background: "var(--highlighter-yellow)", padding: "2px 6px", borderRadius: 4 }}>[DOC]</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{doc.title}</div>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>Document • Expires {doc.validUntil.toLocaleDateString()}</div>
+                  <div style={{ fontSize: 12, color: "#64748b" }}>Document â€¢ Expires {doc.validUntil.toLocaleDateString()}</div>
                 </div>
                 <span className={`badge ${doc.status === "EXPIRED" ? "badge-red" : "badge-amber"}`}>{doc.status}</span>
               </div>
@@ -399,7 +399,7 @@ export default async function DashboardPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Admin Dashboard</h1>
-          <p className="page-subtitle">System Administration • {user.name}</p>
+          <p className="page-subtitle">System Administration â€¢ {user.name}</p>
         </div>
         <Link href="/admin" className="btn btn-primary">[ADMIN] Admin Panel</Link>
       </div>
@@ -446,3 +446,4 @@ export default async function DashboardPage() {
     </div>
   );
 }
+

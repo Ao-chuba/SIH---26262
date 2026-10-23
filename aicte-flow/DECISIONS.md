@@ -1,36 +1,34 @@
-# 📋 Architectural Decisions & Engineering Rationale
+﻿# Architectural Decisions & Engineering Rationale
 
-> **Project:** AICTE Flow — Approval Workflow Automation, Compliance Monitoring & Alert Management System  
-> **Problem Statement ID:** 26262
+**Project:** AICTE Flow — Approval Workflow Automation, Compliance Monitoring & Alert Management System
+**Problem Statement:** SIH 2024 PS-26262
 
 ---
 
-## 1. Key Assumptions & Regulatory Baselines
+## 1. Core Assumptions & Regulatory Baselines
 
-### 1.1 Two kinds of “rules” (official APH vs operational placeholders)
+### 1.1 APH Norms vs Operational SLAs
 
-Judges will ask where numbers come from. We keep a hard split:
+The system maintains a clear separation between two types of configuration:
 
-| Kind | Source | Examples | In product |
+| Kind | Source | Examples | In Product |
 |---|---|---|---|
-| **APH-style norms** | Approval Process Handbook themes (faculty–student ratio, cadre, intake divisions, infrastructure readiness) | ≥ **1:20** faculty:student (UG Engg / MBA-style demos); cadre **1:2:6**; intake in multiples of **30/60** | Assistive **pass/fail** cards on the application. Never auto-approve or auto-reject. Labelled as norms-aligned checks to support officer scrutiny. |
-| **Operational SLAs** | Academic calendar / RO practice — **not** hard-coded as immutable law in this prototype | Scrutiny **15** days, Re-Scrutiny **7**, reminder offsets T-30/T-7, escalation after N overdue days | Stored in `RuleConfig`, editable in **Admin**. Banner: *"Illustrative placeholder, configure in alignment with the official AICTE Approval Process Handbook (APH) / current academic calendar."* |
+| APH-aligned norms | Approval Process Handbook themes (faculty ratios, cadre, intake divisions) | >=1:20 faculty:student; cadre 1:2:6; intake multiples of 30/60 | Assistive pass/fail cards on applications. Never auto-approve or auto-reject. Labelled as norms-aligned checks to support officer scrutiny. |
+| Operational SLAs | Academic calendar / RO practice — not hard-coded as statutory law | Scrutiny 15 days, Re-Scrutiny 7, reminders T-30/T-7, escalation thresholds | Stored in RuleConfig, editable in Admin without code changes. Labelled "Illustrative placeholder, configure per the official APH / current academic calendar." |
 
-- **Assumption:** Stage timelines and alert offsets in seed/`rules.ts` are placeholders for demo pacing.
-- **Design Decision:** Business logic reads timelines from config/DB, not magic numbers scattered in handlers. APH quantitative checks (when added) live as explicit norm constants + UI badges, separate from the deadline engine.
+APH quantitative checks live as explicit norm constants with UI badges, kept separate from the deadline engine to prevent conflation of assistive checks with statutory decisions.
 
-### 1.2 "Generic Deadline Engine" as the Architectural Core
-- **Assumption:** Stage pendency, EVC visit delays, conditional undertaking compliance, and land lease/document expirations share an identical operational model:
-  $$\text{Item} = \langle \text{dueAt}, \text{state}, \text{escalationLevel}, \text{ownerUserId}, \text{escalationLadder} \rangle$$
-- **Design Decision:** Rather than writing fragmented cron jobs for each feature, we built a single unified `DeadlineItem` table and evaluation engine (`tick()`). Applications, EVC visits, Undertakings, and Documents are producers of `DeadlineItem` rows; the notification dispatcher and escalation manager are consumers.
+### 1.2 Generic Deadline Engine as the Architectural Core
 
-### 1.3 Role-Switch Demo Authentication
-- **Assumption:** For hackathon and jury evaluation, requiring individual passwords or OTP logins introduces friction and delays during evaluation.
-- **Design Decision:** We implemented a secure HTTP-only cookie-based session switcher (`aicte_user_id`) coupled with server-side role validation (`requireRole`, `requireAuth`, `canActOnApplication`). A user picker in the top navigation bar allows the evaluator to switch contexts seamlessly between an Institution, Regional Officer, Bureau Officer, and Admin.
+Stage pendency, EVC visit delays, conditional undertaking compliance, and land lease/document expirations share an identical operational model. Rather than writing fragmented cron jobs per feature, we built a single unified `DeadlineItem` table and evaluation engine (`tick()`). Applications, EVC visits, Undertakings, and Documents are producers of `DeadlineItem` rows; the notification dispatcher and escalation manager are consumers. This avoids duplicated logic, simplifies testing, and ensures consistent behaviour across all time-bound regulatory items.
 
-### 1.4 Communication Simulation (Zero External Dependency)
-- **Assumption:** Production external gateways (SMS gateways, SMTP servers, Gov.in e-mail relays) require external API keys, credentials, and internet connectivity, which can fail or get rate-limited during a live demonstration.
-- **Design Decision:** Reminders and escalation notices write to the `Notification` table across three channels (`INAPP`, `EMAIL`, `SMS`). An in-app Notification Inbox displays real-time badges to users, while a dedicated **"Delivery Log"** tab in `/notifications` demonstrates simulated outbound email bodies and SMS payloads with timestamps and recipients.
+### 1.3 Role-Switch Authentication
+
+For evaluation and development environments, requiring individual passwords introduces friction. We implemented a secure HTTP-only cookie-based session switcher (`aicte_user_id`) with server-side role validation (`requireRole`, `requireAuth`, `canActOnApplication`). A user picker in the top navigation bar allows quick context switching. In a production deployment, this would be replaced by Jan Parichay / MeriPehchan OpenID Connect.
+
+### 1.4 Communication Simulation
+
+Production external gateways (SMS, SMTP, Gov.in email relays) require credentials, and can fail during local development. Reminders and escalation notices write to the `Notification` table across three channels (INAPP, EMAIL, SMS). The in-app Notification Inbox shows real-time badges, while a Delivery Log tab in `/notifications` demonstrates simulated outbound email bodies and SMS payloads with timestamps.
 
 ---
 
@@ -38,100 +36,46 @@ Judges will ask where numbers come from. We keep a hard split:
 
 | Trade-off | Option Chosen | Alternative Considered | Rationale |
 |---|---|---|---|
-| **Database Engine** | **SQLite via Prisma ORM** | PostgreSQL / MySQL | Zero local setup required. Enables standalone reproducibility with `dev.db`, allowing any reviewer to run `npm i && npm run seed && npm run dev` immediately. |
-| **Document Storage** | **Local Disk (`/uploads`) + Metadata in DB** | AWS S3 / Cloud Storage | Prevents external cloud credential friction. Local files are preserved with mime types, file sizes, and owner references. |
-| **Audit Log Integrity** | **Cryptographic SHA-256 Hash Chain** | Hyperledger / Blockchain | Blockchain nodes add immense overhead and slow down page loads. A cryptographic SHA-256 hash chain (`prevHash + ts + actor + action + entity + payload`) guarantees tamper evidence and supports instant verification without external nodes. |
-| **Export Formats** | **RFC-4180 Standard CSV + Browser Print CSS** | Server-side PDF generation (`puppeteer` / `pdf-lib`) | Server-side headless Chrome is fragile across operating systems and heavy on memory. CSV export fulfills all data portability requirements, and print-CSS provides clean printable summary pages. |
-| **State Machine Execution** | **Synchronous ACID Transactions** | Distributed message queue (Kafka / RabbitMQ) | SQLite transactional guarantees (`prisma.$transaction`) ensure atomic stage transitions, deadline item closures, and audit entries without eventual consistency bugs. |
+| Database Engine | SQLite via Prisma ORM | PostgreSQL / MySQL | Zero local setup required. Enables standalone reproducibility with dev.db. |
+| Document Storage | Local disk /uploads + metadata in DB | AWS S3 / Cloud Storage | Prevents external cloud credential friction during local runs. |
+| Audit Log Integrity | Cryptographic SHA-256 Hash Chain | Hyperledger / Blockchain | Hash chain gives tamper evidence without the overhead of running blockchain nodes. Instant verification without external infrastructure. |
+| Export Formats | RFC-4180 CSV + browser print CSS | Server-side PDF (puppeteer / pdf-lib) | Headless Chrome is fragile across OS environments. CSV fulfils data portability; print-CSS provides clean printed summaries. |
+| State Machine Execution | Synchronous ACID transactions | Distributed message queue (Kafka / RabbitMQ) | SQLite prisma.$transaction guarantees atomic stage transitions, deadline closures, and audit entries without eventual consistency bugs. |
 
 ---
 
-## 3. Regulatory Safeguards & Ethical AI Alignment
+## 3. Regulatory Safeguards & Design Constraints
 
-1. **Strict Prohibition of Autonomous Approval / Rejection:**
-   - Under AICTE statutory regulations, only designated competent authorities (Regional Committees, SAC/SHC, Executive Committee, Chairman AICTE) hold statutory authority.
-   - The system is architected so that applications strictly halt at `DECISION_PENDING`. Only an authorized `BUREAU_OFFICER` can record a final decision (`DECIDED`) along with mandatory human remarks.
-2. **Deterministic & Auditable State Moves:**
-   - Automation is strictly limited to moving files between functional queues (e.g., when a scrutiny officer signs off on a deficiency-free application, the system automatically places it into the `EVC_QUEUE`).
-3. **Mandatory Deficiency Attribution:**
-   - Any return or revert action enforces a mandatory reason (minimum 10 characters) stored in the permanent observation history and audit log.
-4. **Compliance badges are assistive only:**
-   - APH norms cards (ratio, intake, cadre, lab area) support scrutiny; they do **not** constitute a statutory decision or replace officer verification.
+1. **No Autonomous Approval / Rejection:** Under AICTE statutory regulations, only designated competent authorities hold statutory authority. Applications strictly halt at DECISION_PENDING. Only an authorised BUREAU_OFFICER can record a final decision (DECIDED) with mandatory human remarks.
+
+2. **Deterministic & Auditable State Transitions:** Automation is strictly limited to queue movement (e.g., a deficiency-free application is placed into EVC_QUEUE after officer sign-off). The officer remains the decision-maker at every substantive step.
+
+3. **Mandatory Deficiency Attribution:** Any return or revert action enforces a mandatory reason (minimum 10 characters), stored permanently in the observation history and the audit chain.
+
+4. **Compliance Badges are Assistive Only:** APH norms cards (ratio, intake, cadre, lab area) support scrutiny; they do not constitute a statutory decision or replace officer verification.
 
 ---
 
-## 3.1 UI / demo direction (distinction)
+## 4. Problem Statement Coverage (PS-26262)
 
-- **Light “GovTech” look** — crisp light backgrounds, deep navy primary, clear SLA colours. Avoid dark/neon/cyberpunk dashboards that read as generic hackathon UI.
-- **Self-explanatory stages** — show plain-English labels/subtitles (e.g. EVC = physical campus inspection), not raw route enums, on officer-facing screens.
-- **Demo-visible automation** — clock jump must surface a concrete impact summary (reminders / overdue / escalations), not only a disappearing toast.
-- **Role clarity** — persona/role switcher should make it obvious whose desk the judge is looking at (subtle accent / badge per role).
-
----
-
-## 3.2 §19 gaps — shipped
-
-| Gap | Status |
-|---|---|
-| APH norms card / `metricsJson` | Shipped |
-| Dual-clock bar | Shipped |
-| Audit Simulate Tamper / Restore | Shipped |
-| Simulation impact summary, validity bars, role accents | Shipped |
-| Jury launchpad + hardened DEMO_SCRIPT | Shipped (jury-readiness) |
-
----
-
-## 3.3 Judge Q&A cheat sheet
-
-| Question | Answer |
-|---|---|
-| Are the 15-day scrutiny / T-30 reminders official? | **No.** Operational SLAs are illustrative placeholders in Admin → Rules, labelled “configure per APH / academic calendar.” Change live without code. |
-| Is 1:20 / 1:2:6 / intake 30–60 official? | **APH-aligned norms** shown as assistive pass/fail. They do **not** auto-approve or auto-reject. |
-| Does the system approve colleges automatically? | **Never.** Flow stops at `DECISION_PENDING`. Only a human `BUREAU_OFFICER` records `DECIDED` with remarks. Uploads need officer verify. |
-| How do you prove alerts work in 5 minutes? | Admin **simulated clock** (+7 / +30) runs `tick()` and shows **Simulation Impact Summary** + Delivery Log. |
-| How do you prove the audit is tamper-evident? | SHA-256 hash chain + **Verify** / **Simulate Tamper** / **Restore** on `/audit`. |
-| Why SQLite? | Zero-setup demo reproducibility. Production roadmap: Postgres + Gov SSO + real SMS/email gateways (see §4). |
-| Sister PS SIH26261? | 26261 = document authenticity AI. **26262** = routing, year-round compliance timers, escalations after submission. |
-
----
-
-## 3.3 Problem Statement line-by-line completeness (SIH-26262)
-
-| PS theme | Status | Where it lives |
+| PS Requirement | Status | Implementation |
 |---|---|---|
-| Adaptive application routing (scrutiny / EVC / SAC-SHC) | Done | `ROUTES` + `APP_TYPE_ROUTE_MAP` + **Refer to SAC/SHC** (`referToSacShc`) |
-| Stage timelines + reminders + escalation | Done | `DeadlineItem` + `tick()` + alert rules |
-| Deficiency return + institution response window | Done | `returnApplication` + dual-clock |
-| APH / compliance monitoring (assistive) | Done | Intake hard-block, APH clause cards, score, deficiency prefill |
-| Year-round docs / undertakings | Done | Document expiry + undertaking deadlines + **Compliance Health Score** |
-| Human-in-the-loop decisions (no auto approve/reject) | Done | `DECISION_PENDING` + decide API + UI warning |
-| Audit / accountability | Done | SHA-256 chain + tamper demo + dual-clock |
-| Alerts (in-app / email / SMS simulation) | Done | `Notification` + delivery log |
-| Configurable operational SLAs | Done | Admin `RuleConfig` editor |
-| PPT / pitch deck | Out of scope here | Team prepares separately |
-
-### Distinction vs public competitor demos
-
-| Factor | Typical shallow demos | AICTE Flow |
-|---|---|---|
-| Intake / APH gate | Soft or missing | **Hard-block** invalid intake (e.g. 73) + live faculty preview |
-| Delay blame | Single SLA chip | **Dual-clock** officer vs institution days |
-| Hearing path | Static flowchart only | Live **Refer to SAC/SHC** adaptive route change |
-| Compliance | Checklist screenshot | Clause-labelled APH card + institution **health score 0–100** |
-| Integrity | “Audit log” table | Hash chain + **simulate tamper** |
-| Automation proof | Claims only | Simulated clock + tick impact summary |
+| Adaptive application routing (scrutiny / EVC / SAC-SHC) | Done | ROUTES + APP_TYPE_ROUTE_MAP + referToSacShc API |
+| Stage timelines, reminders, escalation | Done | DeadlineItem + tick() + configurable alert rules |
+| Deficiency return + institution response window | Done | returnApplication + dual-clock bar |
+| APH / compliance monitoring (assistive) | Done | Intake hard-block, APH clause cards, health score, deficiency prefill |
+| Year-round document and undertaking compliance | Done | Document expiry tracking + undertaking deadlines + Compliance Health Score |
+| Human-in-the-loop decisions | Done | DECISION_PENDING gate + decide API + UI warning |
+| Audit and accountability | Done | SHA-256 hash chain + tamper demo |
+| Multi-channel alerts | Done | Notification table + in-app / Email / SMS delivery log |
+| Configurable operational SLAs | Done | Admin RuleConfig editor (runtime, no redeploy) |
 
 ---
 
-## 4. Production Roadmap & Future Integrations
+## 5. Production Roadmap
 
-If transitioning this prototype into AICTE's national production ecosystem:
-
-1. **National Single Sign-On (Jan Parichay / MeriPehchan):**
-   - Replace the demo cookie switcher with OpenID Connect (OIDC) integration into Government of India SSO.
-2. **DigiLocker & Land Record Portal Integration:**
-   - Implement API adapters to fetch land lease deeds, building stability certificates, and Fire NOCs directly from state registration authorities and DigiLocker repositories, eliminating manual document fraud.
-3. **Hardware / e-Sign (Aadhaar e-Sign / DSC):**
-   - Integrate digital signature certificates for EVC inspection reports and scrutiny recommendation sheets.
-4. **NIC SMS Gateway & National e-Governance Division (NeGD) Email Relay:**
-   - Replace simulated notification dispatchers with official government gateway endpoints.
+1. **National SSO (Jan Parichay / MeriPehchan):** Replace the demo cookie switcher with OpenID Connect integration into Government of India SSO.
+2. **DigiLocker & Land Record Portal Integration:** API adapters to fetch land lease deeds, building stability certificates, and Fire NOCs directly from state registration authorities.
+3. **Hardware e-Sign (Aadhaar e-Sign / DSC):** Digital signature certificates for EVC inspection reports and scrutiny recommendation sheets.
+4. **NIC SMS Gateway & NeGD Email Relay:** Replace simulated dispatchers with official government gateway endpoints.
+5. **PostgreSQL Migration:** Move from SQLite to PostgreSQL for production-scale multi-region concurrent load.

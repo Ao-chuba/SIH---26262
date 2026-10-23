@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 
-/** Compact deep-links to golden DEMO-* applications for jury walkthroughs. */
-export async function JuryLaunchpad({
+/** Quick-access links to seeded reference applications for walkthrough and testing. */
+export async function QuickLinks({
   userRole,
   regionId,
   institutionId,
@@ -45,16 +45,16 @@ export async function JuryLaunchpad({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 10 }}>
         <div>
           <div className="card-title" style={{ margin: 0 }}>
-            [JURY] Golden demo applications
+            Reference Applications
           </div>
           <p style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 0" }}>
-            One-click cases for the 5-minute walkthrough. Start with <strong>DEMO-NEW-INST-001</strong> (APH + dual-clock).
+            Seeded reference cases covering all approval routes. Start with <strong>DEMO-NEW-INST-001</strong> for the full statutory route.
           </p>
         </div>
         {userRole === "ADMIN" && (
           <div style={{ display: "flex", gap: 8 }}>
             <Link href="/admin" className="btn btn-secondary btn-sm">
-              Clock
+              Admin
             </Link>
             <Link href="/audit" className="btn btn-secondary btn-sm">
               Audit
