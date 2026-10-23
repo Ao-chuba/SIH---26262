@@ -1,11 +1,29 @@
-import { prisma } from "../db";
+import { prisma, runTx } from "../db";
 import { appendAudit } from "../audit";
 import { getNow } from "../clock";
 import { notify } from "../notify";
-import { ROUTES, STAGES, APP_TYPE_ROUTE_MAP, EVC_NEW_INSTITUTION_DAYS } from "../../config/rules";
+import { ROUTES, STAGES, APP_TYPE_ROUTE_MAP, EVC_NEW_INSTITUTION_DAYS, RESPONSE_WINDOW_DAYS } from "../../config/rules";
 import type { User, Application } from "@prisma/client";
 
 type RouteKey = keyof typeof ROUTES;
+
+type StageConfigMap = typeof STAGES;
+
+async function getConfiguredStages(): Promise<StageConfigMap> {
+  try {
+    const rc = await prisma.ruleConfig.findUnique({ where: { key: "STAGES" } });
+    if (rc) return { ...STAGES, ...JSON.parse(rc.value) };
+  } catch {}
+  return STAGES;
+}
+
+async function getConfiguredEvcNewDays(): Promise<number> {
+  try {
+    const rc = await prisma.ruleConfig.findUnique({ where: { key: "EVC_NEW_INSTITUTION_DAYS" } });
+    if (rc) return Number(JSON.parse(rc.value)) || EVC_NEW_INSTITUTION_DAYS;
+  } catch {}
+  return EVC_NEW_INSTITUTION_DAYS;
+}
 
 function getRouteStages(route: string): readonly string[] {
   return (ROUTES as Record<string, readonly string[]>)[route] ?? [];
@@ -13,7 +31,8 @@ function getRouteStages(route: string): readonly string[] {
 
 function getNextStage(route: string, currentStage: string): string | null {
   const stages = getRouteStages(route);
-  const idx = stages.indexOf(currentStage);
+  const normalized = currentStage === "RE_SCRUTINY" ? "SCRUTINY" : currentStage;
+  const idx = stages.indexOf(normalized);
   if (idx === -1 || idx >= stages.length - 1) return null;
   return stages[idx + 1];
 }
@@ -38,10 +57,11 @@ export async function routeApplication(
   const stages = ROUTES[route];
   const firstStage = stages[0];
   const now = await getNow();
+  const stageConfigs = await getConfiguredStages();
 
   // Find an officer to assign (round-robin by lowest open count)
   const officers = await prisma.user.findMany({
-    where: { role: STAGES[firstStage]?.ownerRole ?? "REGIONAL_OFFICER", regionId: app.regionId },
+    where: { role: stageConfigs[firstStage]?.ownerRole ?? "REGIONAL_OFFICER", regionId: app.regionId },
   });
   let assignedTo = officers[0];
   if (officers.length > 1) {
@@ -54,9 +74,9 @@ export async function routeApplication(
     assignedTo = officers[minIdx];
   }
 
-  const stageTimelineDays = STAGES[firstStage]?.timelineDays ?? 15;
+  const stageTimelineDays = stageConfigs[firstStage]?.timelineDays ?? 15;
 
-  await prisma.$transaction(async (tx) => {
+  await runTx(async (tx) => {
     await tx.application.update({
       where: { id: applicationId },
       data: {
@@ -127,10 +147,14 @@ export async function advanceApplication(
 
   // Guard: check actor role
   const stageOwnerRole = STAGES[app.currentStageKey]?.ownerRole;
+  const canActOnSac =
+    app.currentStageKey === "SAC_SHC" &&
+    (actor.role === "SAC_SHC_MEMBER" || actor.role === "EVC_COMMITTEE");
   if (
     actor.role !== "ADMIN" &&
     actor.role !== "BUREAU_OFFICER" &&
-    actor.role !== stageOwnerRole
+    actor.role !== stageOwnerRole &&
+    !canActOnSac
   ) {
     throw new Error(`Role ${actor.role} cannot advance stage ${app.currentStageKey}`);
   }
@@ -142,6 +166,7 @@ export async function advanceApplication(
 
   const nextStage = getNextStage(app.route, app.currentStageKey);
   const now = await getNow();
+  const stageConfigs = await getConfiguredStages();
 
   // Close current stage + deadline
   const currentStageRecord = await prisma.applicationStage.findFirst({
@@ -155,8 +180,9 @@ export async function advanceApplication(
   });
 
   let updatedApp: Application;
+  let assignedNextOwner: User | null = null;
 
-  await prisma.$transaction(async (tx) => {
+  await runTx(async (tx) => {
     // Close current stage
     if (currentStageRecord) {
       await tx.applicationStage.update({
@@ -198,8 +224,9 @@ export async function advanceApplication(
     } else {
       nextOwner = await tx.user.findFirst({ where: { role: nextOwnerRole, regionId: app.regionId } });
     }
+    assignedNextOwner = nextOwner;
 
-    const stageTimelineDays = STAGES[nextStage]?.timelineDays ?? 10;
+    const stageTimelineDays = stageConfigs[nextStage]?.timelineDays ?? 10;
 
     updatedApp = await tx.application.update({
       where: { id: applicationId },
@@ -224,7 +251,6 @@ export async function advanceApplication(
     // Auto-hooks
     if (nextStage === "EVC_QUEUE") {
       // Create EVC visit and EVC_SCHEDULING deadline
-      const isNew = app.institutionId ? false : true; // determine by application type
       const existingEvc = await tx.evcVisit.findUnique({ where: { applicationId } });
       if (!existingEvc) {
         await tx.evcVisit.create({
@@ -265,17 +291,18 @@ export async function advanceApplication(
         applicationId,
       },
     });
-
-    if (nextOwner) {
-      await notify({
-        toUserId: nextOwner.id,
-        kind: "INFO",
-        subject: `Application advanced: ${app.refNo}`,
-        body: `Application ${app.refNo} has moved to ${STAGES[nextStage]?.label}. Please review.`,
-        applicationId,
-      });
-    }
   });
+
+  if (nextStage && assignedNextOwner) {
+    const owner = assignedNextOwner as User;
+    await notify({
+      toUserId: owner.id,
+      kind: "INFO",
+      subject: `Application advanced: ${app.refNo}`,
+      body: `Application ${app.refNo} has moved to ${STAGES[nextStage]?.label}. Please review.`,
+      applicationId,
+    });
+  }
 
   await appendAudit({
     actorId: actor.id,
@@ -320,9 +347,13 @@ export async function returnApplication(
   });
 
   // Response window
-  const responseWindowDays = 7;
+  let responseWindowDays = RESPONSE_WINDOW_DAYS;
+  try {
+    const rc = await prisma.ruleConfig.findUnique({ where: { key: "RESPONSE_WINDOW_DAYS" } });
+    if (rc) responseWindowDays = Number(JSON.parse(rc.value)) || RESPONSE_WINDOW_DAYS;
+  } catch {}
 
-  const updatedApp = await prisma.$transaction(async (tx) => {
+  const updatedApp = await runTx(async (tx) => {
     if (currentStageRecord) {
       await tx.applicationStage.update({
         where: { id: currentStageRecord.id },
@@ -442,7 +473,8 @@ export async function referToSacShc(
 
   const now = await getNow();
   const sac = await prisma.user.findFirst({ where: { role: "SAC_SHC_MEMBER" } });
-  const timelineDays = STAGES.SAC_SHC?.timelineDays ?? 10;
+  const stageConfigs = await getConfiguredStages();
+  const timelineDays = stageConfigs.SAC_SHC?.timelineDays ?? 10;
 
   const currentStageRecord = await prisma.applicationStage.findFirst({
     where: { applicationId, stageKey: app.currentStageKey, exitedAt: null },
@@ -454,7 +486,7 @@ export async function referToSacShc(
     orderBy: { openedAt: "desc" },
   });
 
-  const updatedApp = await prisma.$transaction(async (tx) => {
+  const updatedApp = await runTx(async (tx) => {
     if (currentStageRecord) {
       await tx.applicationStage.update({
         where: { id: currentStageRecord.id },
@@ -554,9 +586,24 @@ export async function scheduleEvc(
 
   const now = await getNow();
   const isNew = data.isNewInstitution ?? evc.isNewInstitution;
-  const completionDays = isNew ? EVC_NEW_INSTITUTION_DAYS : (STAGES.EVC_SCHEDULED?.timelineDays ?? 20);
+  const [stageConfigs, evcNewDays] = await Promise.all([
+    getConfiguredStages(),
+    getConfiguredEvcNewDays(),
+  ]);
+  const completionDays = isNew ? evcNewDays : (stageConfigs.EVC_SCHEDULED?.timelineDays ?? 20);
 
-  await prisma.$transaction(async (tx) => {
+  await runTx(async (tx) => {
+    const queueStage = await tx.applicationStage.findFirst({
+      where: { applicationId: evc.applicationId, stageKey: "EVC_QUEUE", exitedAt: null },
+      orderBy: { enteredAt: "desc" },
+    });
+    if (queueStage) {
+      await tx.applicationStage.update({
+        where: { id: queueStage.id },
+        data: { exitedAt: now, outcome: "ADVANCED", notes: "EVC visit scheduled" },
+      });
+    }
+
     await tx.evcVisit.update({
       where: { id: evcId },
       data: {
@@ -571,6 +618,7 @@ export async function scheduleEvc(
       where: { id: evc.applicationId },
       data: {
         currentStageKey: "EVC_SCHEDULED",
+        assignedToId: data.committeeId ?? evc.application.assignedToId,
         stageEnteredAt: now,
         updatedAt: now,
       },
@@ -585,11 +633,11 @@ export async function scheduleEvc(
       },
     });
 
-    // Close EVC_SCHEDULING deadline
+    // Close EVC_SCHEDULING and open EVC_QUEUE stage deadlines
     await tx.deadlineItem.updateMany({
       where: {
         refId: evc.applicationId,
-        kind: "EVC_SCHEDULING",
+        kind: { in: ["EVC_SCHEDULING", "STAGE_TIMELINE"] },
         state: "OPEN",
       },
       data: { state: "SATISFIED", closedAt: now },
@@ -637,8 +685,23 @@ export async function completeEvc(
   });
 
   const now = await getNow();
+  const stageConfigs = await getConfiguredStages();
+  const ro = await prisma.user.findFirst({
+    where: { role: "REGIONAL_OFFICER", regionId: evc.application.regionId },
+  });
 
-  await prisma.$transaction(async (tx) => {
+  await runTx(async (tx) => {
+    const scheduledStage = await tx.applicationStage.findFirst({
+      where: { applicationId: evc.applicationId, stageKey: "EVC_SCHEDULED", exitedAt: null },
+      orderBy: { enteredAt: "desc" },
+    });
+    if (scheduledStage) {
+      await tx.applicationStage.update({
+        where: { id: scheduledStage.id },
+        data: { exitedAt: now, outcome: "ADVANCED", notes: `Report submitted: ${data.reportRef}` },
+      });
+    }
+
     await tx.evcVisit.update({
       where: { id: evcId },
       data: {
@@ -648,11 +711,11 @@ export async function completeEvc(
       },
     });
 
-    // Close EVC_COMPLETION deadline
+    // Close EVC_COMPLETION deadline (seeded with refId=applicationId or runtime refId=evcId)
     await tx.deadlineItem.updateMany({
       where: {
-        refId: evcId,
-        kind: "EVC_COMPLETION",
+        OR: [{ refId: evcId }, { applicationId: evc.applicationId }],
+        kind: { in: ["EVC_COMPLETION", "STAGE_TIMELINE"] },
         state: "OPEN",
       },
       data: { state: "SATISFIED", closedAt: now },
@@ -663,6 +726,7 @@ export async function completeEvc(
       where: { id: evc.applicationId },
       data: {
         currentStageKey: "EVC_REPORT",
+        assignedToId: ro?.id ?? evc.application.assignedToId,
         stageEnteredAt: now,
         updatedAt: now,
       },
@@ -686,8 +750,9 @@ export async function completeEvc(
         refId: evc.applicationId,
         institutionId: evc.application.institutionId,
         regionId: evc.application.regionId,
+        ownerUserId: ro?.id,
         title: `${evc.application.refNo} – EVC Report Review deadline`,
-        dueAt: new Date(now.getTime() + (STAGES.EVC_REPORT?.timelineDays ?? 7) * 86400000),
+        dueAt: new Date(now.getTime() + (stageConfigs.EVC_REPORT?.timelineDays ?? 7) * 86400000),
         applicationId: evc.applicationId,
       },
     });
@@ -716,7 +781,7 @@ export async function submitUndertakingEvidence(
   const ut = await prisma.undertaking.findUniqueOrThrow({ where: { id: undertakingId } });
   const now = await getNow();
 
-  await prisma.$transaction(async (tx) => {
+  await runTx(async (tx) => {
     await tx.evidence.create({
       data: {
         ownerType: "UNDERTAKING",
@@ -761,7 +826,7 @@ export async function verifyUndertaking(
   const ut = await prisma.undertaking.findUniqueOrThrow({ where: { id: undertakingId } });
   const now = await getNow();
 
-  await prisma.$transaction(async (tx) => {
+  await runTx(async (tx) => {
     if (data.verified) {
       await tx.undertaking.update({
         where: { id: undertakingId },
@@ -822,7 +887,7 @@ export async function submitDocumentRenewal(
 ) {
   const now = await getNow();
 
-  await prisma.$transaction(async (tx) => {
+  await runTx(async (tx) => {
     await tx.evidence.create({
       data: {
         ownerType: "DOCUMENT",
@@ -870,7 +935,7 @@ export async function verifyDocument(
   const doc = await prisma.instDocument.findUniqueOrThrow({ where: { id: documentId } });
   const now = await getNow();
 
-  await prisma.$transaction(async (tx) => {
+  await runTx(async (tx) => {
     if (data.verified) {
       await tx.instDocument.update({
         where: { id: documentId },

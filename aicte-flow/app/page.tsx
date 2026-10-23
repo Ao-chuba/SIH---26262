@@ -2,6 +2,8 @@ import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
+import { appendAudit } from "@/lib/audit";
+import { AccountSelector } from "./AccountSelector";
 
 export const dynamic = "force-dynamic";
 
@@ -14,38 +16,38 @@ export default async function LoginPage() {
   const roleCards = [
     {
       role: "INSTITUTION",
-      asciiTag: "[INSTITUTION]",
+      tag: "Institution",
       label: "Institution Portal",
-      desc: "Submit applications, track live stage SLA, resolve queries & compliance undertakings",
-      badgeColor: "var(--accent-blue)",
+      desc: "File applications, respond to scrutiny deficiencies, and submit compliance undertakings.",
+      badgeColor: "var(--accent-sage)",
     },
     {
       role: "REGIONAL_OFFICER",
-      asciiTag: "[REGIONAL]",
+      tag: "Regional Office",
       label: "Regional Officer",
-      desc: "Scrutiny, deficiency checks, EVC queue management & institutional compliance verification",
+      desc: "Verify APH norms, return deficient files, schedule EVC visits, and review undertakings.",
       badgeColor: "var(--highlighter-yellow)",
     },
     {
       role: "BUREAU_OFFICER",
-      asciiTag: "[BUREAU]",
+      tag: "Central Bureau",
       label: "Bureau Officer",
-      desc: "All-region pendency oversight, SAC/SHC monitoring & final competent authority decisions",
+      desc: "Monitor regional pendency, handle escalations, and record competent authority decisions.",
       badgeColor: "var(--accent-blue)",
     },
     {
       role: "EVC_COMMITTEE",
-      asciiTag: "[EVC]",
-      label: "EVC Committee",
-      desc: "Manage Expert Visit Committee inspections, schedule visits & upload inspection reports",
-      badgeColor: "var(--highlighter-yellow)",
+      tag: "Inspection & Hearing",
+      label: "EVC & SAC/SHC",
+      desc: "Conduct campus inspections, file EVC reports, and review standing hearing referrals.",
+      badgeColor: "#FEF3C7",
     },
     {
       role: "ADMIN",
-      asciiTag: "[ADMIN]",
+      tag: "Administration",
       label: "System Admin",
-      desc: "Simulated time engine, dynamic SLA rules, user directory & cryptographic audit ledger",
-      badgeColor: "var(--accent-blue)",
+      desc: "Manage stage timelines, simulate calendar dates, and verify SHA-256 audit integrity.",
+      badgeColor: "var(--accent-peach)",
     },
   ];
 
@@ -53,14 +55,32 @@ export default async function LoginPage() {
     "use server";
     const userId = formData.get("userId") as string;
     if (!userId) return;
+    const picked = await prisma.user.findUnique({ where: { id: userId } });
+    if (!picked) return;
     const cookieStore = await cookies();
     cookieStore.set(COOKIE_NAME, userId, { httpOnly: true, path: "/", sameSite: "lax" });
+    await appendAudit({
+      actorId: picked.id,
+      actorRole: picked.role,
+      action: "LOGIN_SWITCH",
+      entityType: "User",
+      entityId: picked.id,
+      payload: { userId: picked.id, role: picked.role },
+    });
     redirect("/dashboard");
   }
 
+  const userOptions = users.map((u) => ({
+    id: u.id,
+    name: u.name.replace(/^Institution User\s*[–-]\s*/i, "").trim(),
+    email: u.email,
+    role: u.role,
+    scope: u.institution?.name ?? u.region?.name ?? "Central HQ",
+  }));
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
-      {/* HeyFriends! Style Header */}
+      {/* Header */}
       <header
         style={{
           borderBottom: "1.5px solid var(--border)",
@@ -69,83 +89,81 @@ export default async function LoginPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 12,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <img
-            src="/logo.png"
-            alt="AICTE Logo"
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span
             style={{
-              width: 36,
-              height: 36,
-              objectFit: "contain",
-              borderRadius: 8,
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              background: "var(--highlighter-yellow)",
+              border: "1.5px solid var(--forest)",
+              display: "inline-block",
             }}
           />
-
-          <span style={{ fontSize: 22, fontWeight: 900, color: "var(--forest)", letterSpacing: "-0.03em" }}>
-            AICTE Flow<span style={{ color: "var(--accent-blue)" }}></span>
-          </span>
-
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <span style={{ fontSize: 13, color: "var(--muted)", fontWeight: 500 }}>
-            APH Workflow Automation System
+          <span style={{ fontSize: 20, fontWeight: 800, color: "var(--forest)", letterSpacing: "-0.03em" }}>
+            AICTE Flow
           </span>
           <span
             style={{
-              padding: "6px 16px",
-              background: "var(--highlighter-yellow)",
-              border: "1.5px solid var(--border)",
-              color: "var(--forest)",
-              borderRadius: "9999px",
-              fontSize: 12,
-              fontWeight: 700,
+              fontSize: 11,
               fontFamily: "var(--font-mono)",
+              background: "var(--bg-subtle)",
+              color: "var(--forest)",
+              border: "1px solid var(--border)",
+              padding: "2px 8px",
+              borderRadius: "9999px",
+              fontWeight: 700,
             }}
           >
-            National Portal
+            SIH-26262
           </span>
+        </div>
+
+        <div style={{ fontSize: 13, color: "var(--forest-muted)", fontWeight: 600 }}>
+          Approval Process Handbook (APH) Workflow Portal
         </div>
       </header>
 
-      {/* Hero Section */}
-      <main style={{ flex: 1, maxWidth: 1180, width: "100%", margin: "0 auto", padding: "48px 24px" }}>
-        <div style={{ textAlign: "center", maxWidth: 840, margin: "0 auto 48px" }}>
+      {/* Main Content */}
+      <main style={{ flex: 1, maxWidth: 1160, width: "100%", margin: "0 auto", padding: "44px 24px 56px" }}>
+        <div style={{ textAlign: "center", maxWidth: 780, margin: "0 auto 40px" }}>
           <div
             style={{
               display: "inline-block",
               background: "var(--accent-blue)",
               color: "var(--forest)",
-              padding: "6px 20px",
+              border: "1px solid var(--forest)",
+              padding: "4px 14px",
               borderRadius: "9999px",
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: 700,
               fontFamily: "var(--font-mono)",
-              marginBottom: 20,
-              letterSpacing: "0.04em",
+              marginBottom: 16,
             }}
           >
-            AICTE APPROVAL WORKFLOW &amp; COMPLIANCE SYSTEM
+            AICTE APPROVAL &amp; COMPLIANCE PORTAL
           </div>
 
           <h1
             style={{
-              fontSize: "clamp(2rem, 4vw, 3.25rem)",
-              fontWeight: 900,
+              fontSize: "clamp(1.9rem, 3.6vw, 2.9rem)",
+              fontWeight: 800,
               color: "var(--forest)",
               lineHeight: 1.15,
-              letterSpacing: "-0.035em",
-              marginBottom: 20,
+              letterSpacing: "-0.03em",
+              marginBottom: 14,
             }}
           >
-            Unlock effortless{" "}
+            Approval workflow routing,{" "}
             <span
               style={{
                 position: "relative",
                 display: "inline-block",
-                padding: "0 8px",
+                padding: "0 10px",
               }}
             >
               <span
@@ -153,52 +171,49 @@ export default async function LoginPage() {
                   position: "absolute",
                   inset: 0,
                   background: "var(--highlighter-yellow)",
+                  border: "1.5px solid var(--forest)",
                   borderRadius: "9999px",
-                  transform: "rotate(-1deg)",
+                  transform: "rotate(-0.5deg)",
                   zIndex: 0,
                 }}
               />
-              <span style={{ position: "relative", zIndex: 1 }}>AICTE growth</span>
+              <span style={{ position: "relative", zIndex: 1 }}>SLA tracking</span>
             </span>{" "}
-            with end-to-end workflow clarity.
+            &amp; compliance monitoring.
           </h1>
 
           <p
             style={{
-              fontSize: 17,
-              color: "var(--muted)",
-              lineHeight: 1.6,
-              maxWidth: 720,
+              fontSize: 15.5,
+              color: "var(--forest-muted)",
+              lineHeight: 1.55,
+              maxWidth: 640,
               margin: "0 auto",
             }}
           >
-            A modern, transparent compliance monitoring portal for institutions, regional offices, and central bureau.
-            Features strict SLA countdowns, cryptographic audit ledger, and simulated time machine.
+            Stage routing across Scrutiny, EVC, and SAC/SHC with deadline alerts, undertaking verification, lease expiry tracking, and a hash-chained audit log.
           </p>
         </div>
 
         {/* Role Cards Grid */}
-        <div style={{ marginBottom: 40 }}>
+        <div style={{ marginBottom: 28 }}>
           <div
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: 20,
+              marginBottom: 14,
             }}
           >
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--forest)", margin: 0 }}>
-              Select a Role to Enter Portal
+            <h2 style={{ fontSize: 16.5, fontWeight: 800, color: "var(--forest)", margin: 0 }}>
+              Select Role Workspace
             </h2>
-            <span style={{ fontSize: 12, color: "var(--muted)", backgroundColor: "var(--highlighter-yellow)", fontFamily: "var(--font-mono)" }}>
-              [SELECT ROLE]
-            </span>
           </div>
 
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(205px, 1fr))",
               gap: 16,
             }}
           >
@@ -209,19 +224,15 @@ export default async function LoginPage() {
                   <input type="hidden" name="userId" value={matchedUser?.id ?? ""} />
                   <button
                     type="submit"
-                    className="card"
+                    className="card card-interactive"
                     style={{
                       width: "100%",
                       textAlign: "left",
                       cursor: "pointer",
-                      padding: "22px 18px",
+                      padding: "20px 18px",
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "space-between",
-                      border: "1.5px solid var(--border)",
-                      borderRadius: 18,
-                      background: "var(--card-bg)",
-                      transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
                     }}
                   >
                     <div>
@@ -233,19 +244,20 @@ export default async function LoginPage() {
                           fontWeight: 700,
                           background: card.badgeColor,
                           color: "var(--forest)",
-                          padding: "3px 10px",
+                          border: "1px solid var(--forest)",
+                          padding: "2px 10px",
                           borderRadius: "9999px",
-                          marginBottom: 14,
+                          marginBottom: 12,
                         }}
                       >
-                        {card.asciiTag}
+                        {card.tag}
                       </div>
                       <div
                         style={{
                           fontSize: 16,
                           fontWeight: 800,
                           color: "var(--forest)",
-                          marginBottom: 8,
+                          marginBottom: 6,
                           letterSpacing: "-0.02em",
                         }}
                       >
@@ -253,10 +265,10 @@ export default async function LoginPage() {
                       </div>
                       <div
                         style={{
-                          fontSize: 12,
-                          color: "var(--muted)",
+                          fontSize: 12.5,
+                          color: "var(--forest-muted)",
                           lineHeight: 1.5,
-                          marginBottom: 20,
+                          marginBottom: 18,
                         }}
                       >
                         {card.desc}
@@ -272,11 +284,10 @@ export default async function LoginPage() {
                         fontSize: 12,
                         fontWeight: 700,
                         textAlign: "center",
-                        fontFamily: "var(--font-mono)",
                         marginTop: "auto",
                       }}
                     >
-                      Enter -&gt;
+                      Enter Workspace &rarr;
                     </div>
                   </button>
                 </form>
@@ -285,86 +296,11 @@ export default async function LoginPage() {
           </div>
         </div>
 
-
-
-        {/* Specific User Quick Selector */}
-        <div
-          className="card"
-          style={{
-            padding: "24px 28px",
-            background: "var(--card-bg)",
-            borderRadius: 20,
-            border: "1.5px solid var(--border)",
-            marginBottom: 32,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 16,
-              flexWrap: "wrap",
-              gap: 8,
-            }}
-          >
-            <div>
-              <span style={{ fontWeight: 800, fontSize: 15, color: "var(--forest)" }}>
-                Or Launch Specific User Session
-              </span>
-              <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--muted)" }}>
-                Pick from regional officers, institution coordinators, or bureau administrators
-              </p>
-            </div>
-            <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 11,
-                color: "var(--muted)",
-                background: "var(--bg-subtle)",
-                padding: "3px 8px",
-                borderRadius: "9999px",
-              }}
-            >
-              [ACCOUNT SELECTOR]
-            </span>
-          </div>
-
-          <form action={switchUser} style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <select
-              name="userId"
-              className="form-select"
-              style={{
-                flex: 1,
-                minWidth: 280,
-                borderRadius: "9999px",
-                padding: "10px 18px",
-                fontSize: 13,
-                fontFamily: "var(--font-sans)",
-                border: "1.5px solid var(--border)",
-                background: "var(--card-bg)",
-              }}
-            >
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  [{u.role}] {u.name} — {u.email} ({u.institution?.name ?? u.region?.name ?? "Central"})
-                </option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              style={{
-                borderRadius: "9999px",
-                padding: "10px 24px",
-                fontSize: 13,
-                fontWeight: 700,
-                fontFamily: "var(--font-mono)",
-              }}
-            >
-              Launch Session -&gt;
-            </button>
-          </form>
+        <div className="card" style={{ padding: "18px 22px", borderRadius: 18 }}>
+          <span style={{ fontWeight: 700, fontSize: 13.5, color: "var(--forest)", display: "block", marginBottom: 10 }}>
+            Sign in as a specific account
+          </span>
+          <AccountSelector users={userOptions} switchUserAction={switchUser} />
         </div>
       </main>
     </div>

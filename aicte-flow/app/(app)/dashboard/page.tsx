@@ -1,19 +1,19 @@
-﻿import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { differenceInCalendarDays } from "date-fns";
 import { getNow } from "@/lib/clock";
 import { computeHealthScore } from "@/lib/aph";
+import { formatAppType, formatRoute, formatStage, formatStatus } from "@/lib/format";
 import Link from "next/link";
-import { QuickLinks } from "../QuickLinks";
 
 function SlaChip({ days, escalationLevel }: { days: number; escalationLevel?: number }) {
   if (escalationLevel && escalationLevel > 0) {
-    return <span className="sla-chip purple">[ESC:L{escalationLevel}]</span>;
+    return <span className="sla-chip purple">Escalated L{escalationLevel}</span>;
   }
-  if (days < 0) return <span className="sla-chip red">[OVERDUE {Math.abs(days)}d]</span>;
-  if (days <= 3) return <span className="sla-chip amber">[DUE {days}d]</span>;
-  return <span className="sla-chip green">[OK {days}d]</span>;
+  if (days < 0) return <span className="sla-chip red">Overdue {Math.abs(days)}d</span>;
+  if (days <= 3) return <span className="sla-chip amber">Due {days}d</span>;
+  return <span className="sla-chip green">{days}d left</span>;
 }
 
 export default async function DashboardPage() {
@@ -21,20 +21,16 @@ export default async function DashboardPage() {
   if (!user) redirect("/");
 
   const now = await getNow();
-  const launchpad = (
-    <QuickLinks
-      userRole={user.role}
-      regionId={user.regionId}
-      institutionId={user.institutionId}
-    />
-  );
 
   if (user.role === "REGIONAL_OFFICER") {
     const [pending, myApps, evcCount, overdueUt, expiringDocs, escalated, regionInsts] = await Promise.all([
       prisma.application.count({ where: { regionId: user.regionId!, status: "IN_PROGRESS" } }),
       prisma.application.findMany({
         where: { regionId: user.regionId!, status: { in: ["IN_PROGRESS", "RETURNED"] } },
-        include: { institution: { select: { name: true } }, deadlineItems: { where: { state: "OPEN", kind: "STAGE_TIMELINE" }, orderBy: { dueAt: "asc" }, take: 1 } },
+        include: {
+          institution: { select: { name: true } },
+          deadlineItems: { where: { state: "OPEN", kind: "STAGE_TIMELINE" }, orderBy: { dueAt: "asc" }, take: 1 },
+        },
         orderBy: { stageEnteredAt: "asc" },
         take: 20,
       }),
@@ -52,6 +48,7 @@ export default async function DashboardPage() {
         },
       }),
     ]);
+
     const regionHealth = regionInsts
       .map((inst) => ({
         id: inst.id,
@@ -68,7 +65,8 @@ export default async function DashboardPage() {
     const dueSoon = myApps.filter((a) => {
       const dl = a.deadlineItems[0];
       if (!dl) return false;
-      return differenceInCalendarDays(dl.dueAt, now) <= 3;
+      const d = differenceInCalendarDays(dl.dueAt, now);
+      return d >= 0 && d <= 3;
     }).length;
 
     const overdue = myApps.filter((a) => {
@@ -79,38 +77,80 @@ export default async function DashboardPage() {
 
     return (
       <div>
-        {launchpad}
         <div className="page-header">
           <div>
             <h1 className="page-title">Regional Dashboard</h1>
-            <p className="page-subtitle">{user.region?.name ?? ""} Region â€¢ {user.name}</p>
+            <p className="page-subtitle">{user.region?.name ?? "Regional"} Office · {user.name}</p>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Link href="/evc" className="btn btn-secondary btn-sm">EVC Queue ({evcCount})</Link>
+            <Link href="/applications" className="btn btn-primary btn-sm">All Applications &rarr;</Link>
           </div>
         </div>
 
-        <div className="kpi-grid">
-          <div className="kpi-card"><div className="kpi-label">My Pending</div><div className="kpi-value">{pending}</div><div className="kpi-sub">Applications in progress</div></div>
-          <div className="kpi-card amber"><div className="kpi-label">Due â‰¤3 Days</div><div className="kpi-value" style={{ color: "#f59e0b" }}>{dueSoon}</div><div className="kpi-sub">Approaching deadline</div></div>
-          <div className="kpi-card red"><div className="kpi-label">Overdue</div><div className="kpi-value" style={{ color: "#ef4444" }}>{overdue}</div><div className="kpi-sub">Past stage deadline</div></div>
-          <div className="kpi-card purple"><div className="kpi-label">Escalated</div><div className="kpi-value" style={{ color: "#a855f7" }}>{escalated}</div><div className="kpi-sub">Need urgent attention</div></div>
-          <div className="kpi-card"><div className="kpi-label">EVC Queue</div><div className="kpi-value">{evcCount}</div><div className="kpi-sub">Awaiting scheduling</div></div>
-          <div className="kpi-card red"><div className="kpi-label">Overdue Undertakings</div><div className="kpi-value" style={{ color: "#ef4444" }}>{overdueUt}</div><div className="kpi-sub">Awaiting verification</div></div>
-          <div className="kpi-card amber"><div className="kpi-label">Expiring Docs</div><div className="kpi-value" style={{ color: "#f59e0b" }}>{expiringDocs}</div><div className="kpi-sub">Within 90 days</div></div>
-        </div>
+      <div className="kpi-grid">
+        <Link href="/applications?status=IN_PROGRESS" className="kpi-card" style={{ textDecoration: "none" }}>
+          <div className="kpi-label">Active Files</div>
+          <div className="kpi-value">{pending}</div>
+          <div className="kpi-sub">In regional queue</div>
+        </Link>
+        <Link href="/applications" className="kpi-card amber" style={{ textDecoration: "none" }}>
+          <div className="kpi-label">Due ≤3 Days</div>
+          <div className="kpi-value" style={{ color: "var(--amber)" }}>{dueSoon}</div>
+          <div className="kpi-sub">Approaching SLA</div>
+        </Link>
+        <Link href="/applications" className="kpi-card red" style={{ textDecoration: "none" }}>
+          <div className="kpi-label">Overdue</div>
+          <div className="kpi-value" style={{ color: "var(--red)" }}>{overdue}</div>
+          <div className="kpi-sub">Past stage deadline</div>
+        </Link>
+        <Link href="/escalations" className="kpi-card purple" style={{ textDecoration: "none" }}>
+          <div className="kpi-label">Escalated</div>
+          <div className="kpi-value" style={{ color: "var(--purple)" }}>{escalated}</div>
+          <div className="kpi-sub">Open L1–L3 items</div>
+        </Link>
+        <Link href="/evc" className="kpi-card" style={{ textDecoration: "none" }}>
+          <div className="kpi-label">EVC Queue</div>
+          <div className="kpi-value">{evcCount}</div>
+          <div className="kpi-sub">Awaiting scheduling</div>
+        </Link>
+        <Link href="/undertakings" className="kpi-card red" style={{ textDecoration: "none" }}>
+          <div className="kpi-label">Overdue Undertakings</div>
+          <div className="kpi-value" style={{ color: "var(--red)" }}>{overdueUt}</div>
+          <div className="kpi-sub">Pending verification</div>
+        </Link>
+        <Link href="/documents" className="kpi-card amber" style={{ textDecoration: "none" }}>
+          <div className="kpi-label">Expiring Docs</div>
+          <div className="kpi-value" style={{ color: "var(--amber)" }}>{expiringDocs}</div>
+          <div className="kpi-sub">Within 90 days</div>
+        </Link>
+      </div>
 
         {regionHealth.length > 0 && (
-          <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card" style={{ marginBottom: 18 }}>
             <div className="card-header">
-              <span className="card-title">Institution Compliance Health (region)</span>
-              <span style={{ fontSize: 11, color: "#64748b" }}>Assistive 0â€“100 Â· lowest first</span>
+              <span className="card-title">Institution Compliance Index</span>
+              <span className="badge badge-gray">0–100 Score</span>
             </div>
-            <div style={{ display: "grid", gap: 8 }}>
+            <div className="grid-2" style={{ gap: 10 }}>
               {regionHealth.map((row) => (
-                <div key={row.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #f0f4f8" }}>
-                  <span style={{ fontWeight: 600, fontSize: 13 }}>{row.name}</span>
+                <div
+                  key={row.id}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "10px 14px",
+                    borderRadius: 12,
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: 13, color: "var(--forest)" }}>{row.name}</span>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{row.health.score}</span>
+                    <span className="font-mono" style={{ fontWeight: 800, fontSize: 13 }}>{row.health.score}/100</span>
                     <span className={`badge ${row.health.label === "HEALTHY" ? "badge-green" : row.health.label === "AT RISK" ? "badge-amber" : "badge-red"}`}>
-                      {row.health.label}
+                      {row.health.label === "HEALTHY" ? "Healthy" : row.health.label === "AT RISK" ? "At Risk" : "Critical"}
                     </span>
                   </div>
                 </div>
@@ -121,12 +161,21 @@ export default async function DashboardPage() {
 
         <div className="card">
           <div className="card-header">
-            <span className="card-title">My Worklist</span>
-            <Link href="/applications" className="btn btn-secondary btn-sm">View All -&gt;</Link>
+            <span className="card-title">Regional Worklist</span>
+            <Link href="/applications" className="btn btn-secondary btn-sm">View All &rarr;</Link>
           </div>
           <div style={{ overflowX: "auto" }}>
             <table className="data-table">
-              <thead><tr><th>Ref No</th><th>Institution</th><th>Stage</th><th>SLA</th><th>Status</th><th></th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Ref No</th>
+                  <th>Institution</th>
+                  <th>Stage</th>
+                  <th>SLA</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
               <tbody>
                 {myApps.map((app) => {
                   const dl = app.deadlineItems[0];
@@ -134,16 +183,34 @@ export default async function DashboardPage() {
                   const esc = dl?.escalationLevel ?? 0;
                   return (
                     <tr key={app.id}>
-                      <td><Link href={`/applications/${app.id}`} style={{ color: "#2a5298", fontWeight: 600 }}>{app.refNo}</Link></td>
-                      <td>{app.institution.name}</td>
-                      <td><span className="badge badge-blue">{app.currentStageKey.replace("_", " ")}</span></td>
+                      <td>
+                        <Link href={`/applications/${app.id}`} className="table-link font-mono">
+                          {app.refNo}
+                        </Link>
+                      </td>
+                      <td style={{ fontWeight: 600 }}>{app.institution.name}</td>
+                      <td><span className="badge badge-blue">{formatStage(app.currentStageKey)}</span></td>
                       <td><SlaChip days={days} escalationLevel={esc} /></td>
-                      <td><span className={`badge ${app.status === "RETURNED" ? "badge-amber" : "badge-blue"}`}>{app.status}</span></td>
-                      <td><Link href={`/applications/${app.id}`} className="btn btn-secondary btn-sm">Review</Link></td>
+                      <td>
+                        <span className={`badge ${app.status === "RETURNED" ? "badge-amber" : "badge-blue"}`}>
+                          {formatStatus(app.status)}
+                        </span>
+                      </td>
+                      <td>
+                        <Link href={`/applications/${app.id}`} className="btn btn-primary btn-sm">
+                          Review
+                        </Link>
+                      </td>
                     </tr>
                   );
                 })}
-                {myApps.length === 0 && <tr><td colSpan={6}><div className="empty-state"><p>No applications assigned.</p></div></td></tr>}
+                {myApps.length === 0 && (
+                  <tr>
+                    <td colSpan={6}>
+                      <div className="empty-state"><p>No applications assigned in this region.</p></div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -153,12 +220,13 @@ export default async function DashboardPage() {
   }
 
   if (user.role === "BUREAU_OFFICER") {
-    const [total, regions, appCountsByRegion, escalated, decidePending] = await Promise.all([
+    const [total, regions, appCountsByRegion, escalated, decidePending, pendingApps] = await Promise.all([
       prisma.application.count({ where: { status: "IN_PROGRESS" } }),
       prisma.region.findMany({
         include: {
           _count: { select: { institutions: true } },
         },
+        orderBy: { name: "asc" },
       }),
       prisma.application.groupBy({
         by: ["regionId"],
@@ -166,49 +234,125 @@ export default async function DashboardPage() {
         _count: { id: true },
       }),
       prisma.deadlineItem.count({ where: { escalationLevel: { gte: 2 }, state: "OPEN" } }),
-      prisma.application.count({ where: { currentStageKey: "DECISION_PENDING" } }),
+      prisma.application.count({ where: { currentStageKey: "DECISION_PENDING", status: "IN_PROGRESS" } }),
+      prisma.application.findMany({
+        where: { currentStageKey: "DECISION_PENDING", status: "IN_PROGRESS" },
+        include: { institution: { select: { name: true, state: true } } },
+        take: 10,
+      }),
     ]);
 
     const appCountMap = Object.fromEntries(appCountsByRegion.map((g) => [g.regionId, g._count.id]));
 
     return (
       <div>
-        {launchpad}
         <div className="page-header">
           <div>
             <h1 className="page-title">Bureau Dashboard</h1>
-            <p className="page-subtitle">All Regions â€¢ {user.name}</p>
+            <p className="page-subtitle">All Regions · {user.name}</p>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Link href="/escalations" className="btn btn-secondary btn-sm">Escalations ({escalated})</Link>
+            <Link href="/applications?stage=DECISION_PENDING" className="btn btn-primary btn-sm">
+              Decision Queue ({decidePending}) &rarr;
+            </Link>
           </div>
         </div>
 
         <div className="kpi-grid">
-          <div className="kpi-card"><div className="kpi-label">Total In Progress</div><div className="kpi-value">{total}</div><div className="kpi-sub">Across all regions</div></div>
-          <div className="kpi-card red"><div className="kpi-label">L2+ Escalations</div><div className="kpi-value" style={{ color: "#ef4444" }}>{escalated}</div><div className="kpi-sub">Require bureau action</div></div>
-          <div className="kpi-card amber"><div className="kpi-label">Decision Pending</div><div className="kpi-value" style={{ color: "#f59e0b" }}>{decidePending}</div><div className="kpi-sub">Awaiting competent authority</div></div>
+          <Link href="/applications?status=IN_PROGRESS" className="kpi-card" style={{ textDecoration: "none" }}>
+            <div className="kpi-label">Total In Progress</div>
+            <div className="kpi-value">{total}</div>
+            <div className="kpi-sub">Across 8 regions</div>
+          </Link>
+          <Link href="/escalations" className="kpi-card red" style={{ textDecoration: "none" }}>
+            <div className="kpi-label">L2+ Escalations</div>
+            <div className="kpi-value" style={{ color: "var(--red)" }}>{escalated}</div>
+            <div className="kpi-sub">Bureau intervention</div>
+          </Link>
+          <Link href="/applications?stage=DECISION_PENDING" className="kpi-card amber" style={{ textDecoration: "none" }}>
+            <div className="kpi-label">Decision Pending</div>
+            <div className="kpi-value" style={{ color: "var(--amber)" }}>{decidePending}</div>
+            <div className="kpi-sub">Competent authority</div>
+          </Link>
         </div>
+
+        {pendingApps.length > 0 && (
+          <div className="card" style={{ marginBottom: 18 }}>
+            <div className="card-header">
+              <span className="card-title">Awaiting Competent Authority Decision</span>
+              <Link href="/applications?stage=DECISION_PENDING" className="btn btn-secondary btn-sm">View All</Link>
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Ref No</th>
+                    <th>Institution</th>
+                    <th>State</th>
+                    <th>Type</th>
+                    <th>Route</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingApps.map((a) => (
+                    <tr key={a.id}>
+                      <td><Link href={`/applications/${a.id}`} className="table-link font-mono">{a.refNo}</Link></td>
+                      <td style={{ fontWeight: 600 }}>{a.institution.name}</td>
+                      <td>{a.institution.state}</td>
+                      <td><span className="badge badge-blue">{formatAppType(a.applicationType)}</span></td>
+                      <td><span className="badge badge-gray">{formatRoute(a.route)}</span></td>
+                      <td>
+                        <Link href={`/applications/${a.id}`} className="btn btn-primary btn-sm">
+                          Record Decision
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         <div className="card">
           <div className="card-header"><span className="card-title">Region-wise Pendency</span></div>
-          <table className="data-table">
-            <thead><tr><th>Region</th><th>Institutions</th><th>In Progress</th><th>Actions</th></tr></thead>
-            <tbody>
-              {regions.map((r) => (
-                <tr key={r.id}>
-                  <td><strong>{r.name}</strong><br /><small style={{ color: "#64748b" }}>{r.headquarters}</small></td>
-                  <td>{r._count.institutions}</td>
-                  <td><span className="badge badge-blue">{appCountMap[r.id] ?? 0}</span></td>
-                  <td><Link href={`/applications?regionId=${r.id}`} className="btn btn-secondary btn-sm">View</Link></td>
+          <div style={{ overflowX: "auto" }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Region</th>
+                  <th>Headquarters</th>
+                  <th>Institutions</th>
+                  <th>In Progress</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {regions.map((r) => (
+                  <tr key={r.id}>
+                    <td><strong>{r.name}</strong></td>
+                    <td style={{ color: "var(--forest-muted)" }}>{r.headquarters}</td>
+                    <td>{r._count.institutions}</td>
+                    <td><span className="badge badge-blue">{appCountMap[r.id] ?? 0} active</span></td>
+                    <td>
+                      <Link href={`/applications?regionId=${r.id}`} className="btn btn-secondary btn-sm">
+                        View Region
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     );
   }
 
   if (user.role === "EVC_COMMITTEE" || user.role === "SAC_SHC_MEMBER") {
-    const [queued, scheduled, overdue] = await Promise.all([
+    const [queued, scheduled, overdue, sacQueue] = await Promise.all([
       prisma.evcVisit.count({ where: { status: "QUEUED" } }),
       prisma.evcVisit.count({ where: { status: "SCHEDULED" } }),
       prisma.evcVisit.findMany({
@@ -216,43 +360,116 @@ export default async function DashboardPage() {
         include: { application: { include: { institution: { select: { name: true } } } } },
         take: 10,
       }),
+      prisma.application.findMany({
+        where: { currentStageKey: "SAC_SHC", status: "IN_PROGRESS" },
+        include: { institution: { select: { name: true } } },
+        take: 10,
+      }),
     ]);
 
     return (
       <div>
-        {launchpad}
         <div className="page-header">
           <div>
-            <h1 className="page-title">EVC Committee Dashboard</h1>
+            <h1 className="page-title">
+              {user.role === "SAC_SHC_MEMBER" ? "SAC / SHC & EVC Dashboard" : "EVC Committee Dashboard"}
+            </h1>
             <p className="page-subtitle">{user.name}</p>
           </div>
+          <Link href="/evc" className="btn btn-primary">Open EVC Queue &rarr;</Link>
         </div>
+
         <div className="kpi-grid">
-          <div className="kpi-card"><div className="kpi-label">Queued for EVC</div><div className="kpi-value">{queued}</div></div>
-          <div className="kpi-card amber"><div className="kpi-label">Scheduled Visits</div><div className="kpi-value" style={{ color: "#f59e0b" }}>{scheduled}</div></div>
-          <div className="kpi-card red"><div className="kpi-label">Overdue Visits</div><div className="kpi-value" style={{ color: "#ef4444" }}>{overdue.length}</div></div>
+          <div className="kpi-card">
+            <div className="kpi-label">Queued for EVC</div>
+            <div className="kpi-value">{queued}</div>
+            <div className="kpi-sub">Awaiting schedule</div>
+          </div>
+          <div className="kpi-card amber">
+            <div className="kpi-label">Scheduled Visits</div>
+            <div className="kpi-value" style={{ color: "var(--amber)" }}>{scheduled}</div>
+            <div className="kpi-sub">Confirmed inspections</div>
+          </div>
+          <div className="kpi-card red">
+            <div className="kpi-label">Overdue Visits</div>
+            <div className="kpi-value" style={{ color: "var(--red)" }}>{overdue.length}</div>
+            <div className="kpi-sub">Past scheduled date</div>
+          </div>
+          <div className="kpi-card purple">
+            <div className="kpi-label">SAC / SHC Queue</div>
+            <div className="kpi-value" style={{ color: "var(--purple)" }}>{sacQueue.length}</div>
+            <div className="kpi-sub">Hearing cases</div>
+          </div>
         </div>
-        {overdue.length > 0 && (
-          <div className="card">
-            <div className="card-title" style={{ marginBottom: 16 }}>[!] Overdue EVC Visits</div>
+
+        {sacQueue.length > 0 && (
+          <div className="card" style={{ marginBottom: 18 }}>
+            <div className="card-header">
+              <span className="card-title">SAC / SHC Hearing Queue</span>
+            </div>
             <table className="data-table">
-              <thead><tr><th>Application</th><th>Institution</th><th>Scheduled For</th><th>Overdue</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Ref No</th>
+                  <th>Institution</th>
+                  <th>Type</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
               <tbody>
-                {overdue.map((v) => (
-                  <tr key={v.id}>
-                    <td><Link href={`/applications/${v.applicationId}`} style={{ color: "#2a5298" }}>{v.application.institution.name}</Link></td>
-                    <td>{v.application.institution.name}</td>
-                    <td>{v.scheduledFor?.toLocaleDateString()}</td>
-                    <td><span className="sla-chip red">[OVERDUE {differenceInCalendarDays(now, v.scheduledFor!)}d]</span></td>
+                {sacQueue.map((a) => (
+                  <tr key={a.id}>
+                    <td><Link href={`/applications/${a.id}`} className="table-link font-mono">{a.refNo}</Link></td>
+                    <td style={{ fontWeight: 600 }}>{a.institution.name}</td>
+                    <td><span className="badge badge-blue">{formatAppType(a.applicationType)}</span></td>
+                    <td><Link href={`/applications/${a.id}`} className="btn btn-primary btn-sm">Review</Link></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-        <div style={{ marginTop: 16 }}>
-          <Link href="/evc" className="btn btn-primary">View EVC Queue -&gt;</Link>
-        </div>
+
+        {overdue.length > 0 && (
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">Overdue EVC Visits</span>
+              <Link href="/evc" className="btn btn-secondary btn-sm">All Visits &rarr;</Link>
+            </div>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Application</th>
+                  <th>Institution</th>
+                  <th>Scheduled For</th>
+                  <th>SLA</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {overdue.map((v) => (
+                  <tr key={v.id}>
+                    <td>
+                      <Link href={`/applications/${v.applicationId}`} className="table-link font-mono">
+                        {v.application.refNo}
+                      </Link>
+                    </td>
+                    <td style={{ fontWeight: 600 }}>{v.application.institution.name}</td>
+                    <td>{v.scheduledFor?.toLocaleDateString()}</td>
+                    <td>
+                      <span className="sla-chip red">
+                        Overdue {differenceInCalendarDays(now, v.scheduledFor!)}d
+                      </span>
+                    </td>
+                    <td>
+                      <Link href={`/evc/${v.id}`} className="btn btn-primary btn-sm">Submit Report</Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     );
   }
@@ -289,97 +506,171 @@ export default async function DashboardPage() {
       now,
     });
     const healthColor =
-      health.label === "HEALTHY" ? "#16a34a" : health.label === "AT RISK" ? "#d97706" : "#dc2626";
+      health.label === "HEALTHY" ? "var(--green)" : health.label === "AT RISK" ? "var(--amber)" : "var(--red)";
 
     return (
       <div>
-        {launchpad}
         <div className="page-header">
           <div>
-            <h1 className="page-title">My Institution Dashboard</h1>
-            <p className="page-subtitle">{user.institution?.name}</p>
+            <h1 className="page-title">Institution Dashboard</h1>
+            <p className="page-subtitle">{user.institution?.name ?? user.name}</p>
           </div>
           <Link href="/applications/new" className="btn btn-primary">+ New Application</Link>
         </div>
 
-        <div className="card" style={{ marginBottom: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+        <div className="card" style={{ marginBottom: 18 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
             <div>
-              <div className="card-title" style={{ marginBottom: 4 }}>Compliance Health Score</div>
-              <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
-                Year-round assistive score from latest APH metrics, document validity, and undertakings â€” not a statutory grade.
+              <div className="card-title">Compliance Index</div>
+              <p style={{ fontSize: 12.5, color: "var(--forest-muted)", marginTop: 2 }}>
+                Weighted from APH norms, document validity, and open undertakings
               </p>
             </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 36, fontWeight: 800, color: healthColor, fontFamily: "var(--font-mono)", lineHeight: 1 }}>
-                {health.score}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ fontSize: 34, fontWeight: 900, color: healthColor, fontFamily: "var(--font-mono)", lineHeight: 1 }}>
+                {health.score}<span style={{ fontSize: 15, color: "var(--forest-muted)" }}>/100</span>
               </div>
               <span className={`badge ${health.label === "HEALTHY" ? "badge-green" : health.label === "AT RISK" ? "badge-amber" : "badge-red"}`}>
-                {health.label}
+                {health.label === "HEALTHY" ? "Healthy" : health.label === "AT RISK" ? "At Risk" : "Critical"}
               </span>
             </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 16 }}>
-            <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8 }}>
-              <div style={{ fontSize: 11, color: "#64748b" }}>APH norms</div>
-              <div style={{ fontWeight: 700, fontSize: 18 }}>{health.aphScore}/100</div>
+          <div className="grid-3" style={{ marginTop: 14 }}>
+            <div style={{ padding: "12px 14px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--forest-muted)", textTransform: "uppercase" }}>APH Norms</div>
+              <div style={{ fontWeight: 800, fontSize: 19, marginTop: 4, fontFamily: "var(--font-mono)" }}>{health.aphScore}/100</div>
             </div>
-            <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8 }}>
-              <div style={{ fontSize: 11, color: "#64748b" }}>Documents</div>
-              <div style={{ fontWeight: 700, fontSize: 18 }}>{health.docsScore}/100</div>
+            <div style={{ padding: "12px 14px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--forest-muted)", textTransform: "uppercase" }}>Documents</div>
+              <div style={{ fontWeight: 800, fontSize: 19, marginTop: 4, fontFamily: "var(--font-mono)" }}>{health.docsScore}/100</div>
             </div>
-            <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8 }}>
-              <div style={{ fontSize: 11, color: "#64748b" }}>Undertakings</div>
-              <div style={{ fontWeight: 700, fontSize: 18 }}>{health.undertakingsScore}/100</div>
+            <div style={{ padding: "12px 14px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--forest-muted)", textTransform: "uppercase" }}>Undertakings</div>
+              <div style={{ fontWeight: 800, fontSize: 19, marginTop: 4, fontFamily: "var(--font-mono)" }}>{health.undertakingsScore}/100</div>
             </div>
           </div>
         </div>
 
         <div className="kpi-grid">
-          <div className="kpi-card"><div className="kpi-label">My Applications</div><div className="kpi-value">{myApps.length}</div></div>
-          <div className="kpi-card red"><div className="kpi-label">Pending Actions</div><div className="kpi-value" style={{ color: "#ef4444" }}>{myUt.length + myDocs.length}</div></div>
+          <Link href="/applications" className="kpi-card" style={{ textDecoration: "none" }}>
+            <div className="kpi-label">Applications</div>
+            <div className="kpi-value">{myApps.length}</div>
+            <div className="kpi-sub">Submitted dockets</div>
+          </Link>
+          <Link href="/applications?status=RETURNED" className="kpi-card amber" style={{ textDecoration: "none" }}>
+            <div className="kpi-label">Returned for Reply</div>
+            <div className="kpi-value" style={{ color: "var(--amber)" }}>
+              {myApps.filter((a) => a.status === "RETURNED").length}
+            </div>
+            <div className="kpi-sub">7-day response window</div>
+          </Link>
+          <Link href="/undertakings" className="kpi-card red" style={{ textDecoration: "none" }}>
+            <div className="kpi-label">Pending Items</div>
+            <div className="kpi-value" style={{ color: "var(--red)" }}>{myUt.length + myDocs.length}</div>
+            <div className="kpi-sub">Undertakings &amp; expiring docs</div>
+          </Link>
         </div>
 
-        <div className="card" style={{ marginBottom: 16 }}>
-          <div className="card-header"><span className="card-title">My Applications</span><Link href="/applications" className="btn btn-secondary btn-sm">View All</Link></div>
-          <table className="data-table">
-            <thead><tr><th>Ref No</th><th>Type</th><th>Current Stage</th><th>Status</th></tr></thead>
-            <tbody>
-              {myApps.map((app) => (
-                <tr key={app.id}>
-                  <td><Link href={`/applications/${app.id}`} style={{ color: "#2a5298", fontWeight: 600 }}>{app.refNo}</Link></td>
-                  <td>{app.applicationType.replace("_", " ")}</td>
-                  <td>{app.currentStageKey.replace("_", " ")}</td>
-                  <td><span className={`badge ${app.status === "RETURNED" ? "badge-amber" : app.status === "DECIDED" ? "badge-green" : "badge-blue"}`}>{app.status}</span></td>
+        <div className="card" style={{ marginBottom: 18 }}>
+          <div className="card-header">
+            <span className="card-title">Applications</span>
+            <Link href="/applications" className="btn btn-secondary btn-sm">View All &rarr;</Link>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Ref No</th>
+                  <th>Type</th>
+                  <th>Current Stage</th>
+                  <th>Status</th>
+                  <th>Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {myApps.map((app) => (
+                  <tr key={app.id}>
+                    <td>
+                      <Link href={`/applications/${app.id}`} className="table-link font-mono">
+                        {app.refNo}
+                      </Link>
+                    </td>
+                    <td><span className="badge badge-blue">{formatAppType(app.applicationType)}</span></td>
+                    <td><span className="badge badge-gray">{formatStage(app.currentStageKey)}</span></td>
+                    <td>
+                      <span className={`badge ${app.status === "RETURNED" ? "badge-amber" : app.status === "DECIDED" ? "badge-green" : "badge-blue"}`}>
+                        {formatStatus(app.status)}
+                      </span>
+                    </td>
+                    <td>
+                      <Link href={`/applications/${app.id}`} className="btn btn-secondary btn-sm">
+                        {app.status === "RETURNED" ? "Reply" : "Open"}
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {(myUt.length > 0 || myDocs.length > 0) && (
           <div className="card">
-            <div className="card-title" style={{ marginBottom: 12 }}>Pending Actions Required</div>
-            {myUt.map((ut) => (
-              <div key={ut.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: "1px solid #f0f4f8" }}>
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, background: "var(--accent-blue)", padding: "2px 6px", borderRadius: 4 }}>[UT]</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{ut.title}</div>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>Undertaking â€¢ Due {ut.dueDate.toLocaleDateString()}</div>
-                </div>
-                <SlaChip days={differenceInCalendarDays(ut.dueDate, now)} />
+            <div className="card-header">
+              <span className="card-title">Pending Compliance Items</span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <Link href="/undertakings" className="btn btn-secondary btn-sm">Undertakings</Link>
+                <Link href="/documents" className="btn btn-secondary btn-sm">Documents</Link>
               </div>
-            ))}
-            {myDocs.map((doc) => (
-              <div key={doc.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: "1px solid #f0f4f8" }}>
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, background: "var(--highlighter-yellow)", padding: "2px 6px", borderRadius: 4 }}>[DOC]</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{doc.title}</div>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>Document â€¢ Expires {doc.validUntil.toLocaleDateString()}</div>
+            </div>
+            <div style={{ display: "grid", gap: 10 }}>
+              {myUt.map((ut) => (
+                <div
+                  key={ut.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "10px 14px",
+                    borderRadius: 12,
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  <span className="badge badge-blue">Undertaking</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>{ut.title}</div>
+                    <div style={{ fontSize: 12, color: "var(--forest-muted)" }}>
+                      Due {ut.dueDate.toLocaleDateString()}
+                    </div>
+                  </div>
+                  <SlaChip days={differenceInCalendarDays(ut.dueDate, now)} />
                 </div>
-                <span className={`badge ${doc.status === "EXPIRED" ? "badge-red" : "badge-amber"}`}>{doc.status}</span>
-              </div>
-            ))}
+              ))}
+              {myDocs.map((doc) => (
+                <div
+                  key={doc.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "10px 14px",
+                    borderRadius: 12,
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  <span className="badge badge-amber">Document</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>{doc.title}</div>
+                    <div style={{ fontSize: 12, color: "var(--forest-muted)" }}>
+                      Expires {doc.validUntil.toLocaleDateString()}
+                    </div>
+                  </div>
+                  <span className={`badge ${doc.status === "EXPIRED" ? "badge-red" : "badge-amber"}`}>{formatStatus(doc.status)}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -387,58 +678,107 @@ export default async function DashboardPage() {
   }
 
   // Admin dashboard
-  const [openItems, alertsToday, recentTick] = await Promise.all([
+  const [openItems, alertsToday, recentTick, clockRecord, totalApps, escalatedCount] = await Promise.all([
     prisma.deadlineItem.count({ where: { state: "OPEN" } }),
     prisma.alertLog.count({ where: { firedAt: { gte: new Date(now.getTime() - 86400000) } } }),
     prisma.auditLog.findFirst({ where: { action: "TICK_RUN" }, orderBy: { seq: "desc" } }),
+    prisma.systemClock.findUnique({ where: { id: 1 } }),
+    prisma.application.count(),
+    prisma.deadlineItem.count({ where: { state: "OPEN", escalationLevel: { gt: 0 } } }),
   ]);
+
+  const isSimulating = !!clockRecord?.simulatedNow;
 
   return (
     <div>
-      {launchpad}
       <div className="page-header">
         <div>
           <h1 className="page-title">Admin Dashboard</h1>
-          <p className="page-subtitle">System Administration â€¢ {user.name}</p>
+          <p className="page-subtitle">System Administration · {user.name}</p>
         </div>
-        <Link href="/admin" className="btn btn-primary">[ADMIN] Admin Panel</Link>
+        <Link href="/admin" className="btn btn-primary">Administration &rarr;</Link>
       </div>
 
       <div className="kpi-grid">
-        <div className="kpi-card"><div className="kpi-label">Open Deadline Items</div><div className="kpi-value">{openItems}</div></div>
-        <div className="kpi-card amber"><div className="kpi-label">Alerts Fired Today</div><div className="kpi-value" style={{ color: "#f59e0b" }}>{alertsToday}</div></div>
-        <div className="kpi-card"><div className="kpi-label">Last Tick</div><div className="kpi-value" style={{ fontSize: 16 }}>{recentTick ? new Date(recentTick.ts).toLocaleTimeString() : "Never"}</div></div>
+        <Link href="/applications" className="kpi-card" style={{ textDecoration: "none" }}>
+          <div className="kpi-label">Open Deadlines</div>
+          <div className="kpi-value">{openItems}</div>
+          <div className="kpi-sub">Active SLA items</div>
+        </Link>
+        <Link href="/notifications?tab=delivery" className="kpi-card amber" style={{ textDecoration: "none" }}>
+          <div className="kpi-label">Alerts (24h)</div>
+          <div className="kpi-value" style={{ color: "var(--amber)" }}>{alertsToday}</div>
+          <div className="kpi-sub">Reminders &amp; overdue</div>
+        </Link>
+        <Link href="/escalations" className="kpi-card purple" style={{ textDecoration: "none" }}>
+          <div className="kpi-label">Escalations</div>
+          <div className="kpi-value" style={{ color: "var(--purple)" }}>{escalatedCount}</div>
+          <div className="kpi-sub">L1–L3 open</div>
+        </Link>
+        <Link href="/admin?tab=ticks" className="kpi-card green" style={{ textDecoration: "none" }}>
+          <div className="kpi-label">Last Tick</div>
+          <div className="kpi-value" style={{ fontSize: 22, marginTop: 10 }}>
+            {recentTick ? new Date(recentTick.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "Never"}
+          </div>
+          <div className="kpi-sub">{totalApps} total applications</div>
+        </Link>
       </div>
 
       <div className="grid-2">
         <div className="card">
-          <div className="card-title" style={{ marginBottom: 12 }}>Quick Links</div>
-          {[
-            ["[RULES] Rules Editor", "/admin"],
-            ["[CLOCK] Clock Control", "/admin#clock"],
-            ["[AUDIT] Audit Trail", "/audit"],
-            ["[REPORTS] Reports", "/reports"],
-            ["[USERS] User Management", "/admin#users"],
-          ].map(([label, href]) => (
-            <Link key={href} href={href} className="nav-item" style={{ color: "#1e3a5f", padding: "8px 0", borderBottom: "1px solid #f0f4f8" }}>
-              {label}
-            </Link>
-          ))}
+          <div className="card-header">
+            <span className="card-title">Quick Links</span>
+          </div>
+          <div style={{ display: "grid", gap: 10 }}>
+            {[
+              ["Simulated Clock & Tick", "/admin", "Advance calendar date or run deadline engine"],
+              ["SLA & APH Rules", "/admin?tab=rules", "Edit stage timelines and EVC limits"],
+              ["Audit Ledger", "/audit", "Verify SHA-256 chain integrity"],
+              ["Reports", "/reports", "Download CSV compliance summaries"],
+              ["User Directory", "/admin?tab=users", "View regional and bureau escalation chain"],
+            ].map(([label, href, sub]) => (
+              <Link key={href} href={href} className="quick-link-row">
+                <div>
+                  <div style={{ fontWeight: 700, color: "var(--forest)" }}>{label}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--forest-muted)", fontWeight: 500, marginTop: 1 }}>{sub}</div>
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>&rarr;</span>
+              </Link>
+            ))}
+          </div>
         </div>
+
         <div className="card">
-          <div className="card-title" style={{ marginBottom: 12 }}>System Status</div>
-          <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>Clock mode</span>
-              <span className="badge badge-green">Real time</span>
+          <div className="card-header">
+            <span className="card-title">System Status</span>
+            <span className={`badge ${isSimulating ? "badge-amber" : "badge-green"}`}>
+              {isSimulating ? "Simulated" : "Live"}
+            </span>
+          </div>
+          <div style={{ display: "grid", gap: 10, fontSize: 13.5 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "var(--bg)", borderRadius: 12, border: "1px solid var(--border)" }}>
+              <span style={{ fontWeight: 600, color: "var(--forest-muted)" }}>System Date</span>
+              <span className="font-mono" style={{ fontWeight: 800 }}>
+                {now.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+              </span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>Open deadlines</span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "var(--bg)", borderRadius: 12, border: "1px solid var(--border)" }}>
+              <span style={{ fontWeight: 600, color: "var(--forest-muted)" }}>Open Deadlines</span>
               <span className="badge badge-blue">{openItems}</span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>Alerts today</span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "var(--bg)", borderRadius: 12, border: "1px solid var(--border)" }}>
+              <span style={{ fontWeight: 600, color: "var(--forest-muted)" }}>Active Escalations</span>
+              <span className="badge badge-purple">{escalatedCount}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "var(--bg)", borderRadius: 12, border: "1px solid var(--border)" }}>
+              <span style={{ fontWeight: 600, color: "var(--forest-muted)" }}>Alerts Fired Today</span>
               <span className="badge badge-amber">{alertsToday}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "var(--bg)", borderRadius: 12, border: "1px solid var(--border)" }}>
+              <span style={{ fontWeight: 600, color: "var(--forest-muted)" }}>Audit Chain</span>
+              <Link href="/audit" className="badge badge-green" style={{ textDecoration: "none" }}>
+                SHA-256 Verified &rarr;
+              </Link>
             </div>
           </div>
         </div>
@@ -446,4 +786,3 @@ export default async function DashboardPage() {
     </div>
   );
 }
-

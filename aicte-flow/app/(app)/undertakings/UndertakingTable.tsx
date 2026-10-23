@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { differenceInCalendarDays } from "date-fns";
+import { formatStatus } from "@/lib/format";
 
 type UndertakingItem = {
   id: string;
@@ -36,6 +37,7 @@ export function UndertakingTable({
   const [evidenceNote, setEvidenceNote] = useState("");
   const [remarks, setRemarks] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const statusColors: Record<string, string> = {
     PENDING: "badge-blue",
@@ -64,7 +66,7 @@ export function UndertakingTable({
       setActiveUploadId(null);
       router.refresh();
     } catch {
-      alert("Failed to submit evidence");
+      setErrorMsg("Failed to submit evidence.");
     } finally {
       setLoading(false);
     }
@@ -74,6 +76,7 @@ export function UndertakingTable({
     e.preventDefault();
     if (!activeVerifyId) return;
     setLoading(true);
+    setErrorMsg(null);
     try {
       await fetch(`/api/undertakings/${activeVerifyId}/verify`, {
         method: "POST",
@@ -83,7 +86,7 @@ export function UndertakingTable({
       setActiveVerifyId(null);
       router.refresh();
     } catch {
-      alert("Failed to record verification decision");
+      setErrorMsg("Failed to record verification decision.");
     } finally {
       setLoading(false);
     }
@@ -91,40 +94,45 @@ export function UndertakingTable({
 
   return (
     <div>
+      {errorMsg && (
+        <div style={{ padding: "10px 14px", marginBottom: 12, borderRadius: 10, background: "var(--red-bg)", border: "1px solid var(--red-border)", color: "var(--red)", fontSize: 13, fontWeight: 600 }}>
+          {errorMsg}
+        </div>
+      )}
       {/* Upload Evidence Modal */}
       {activeUploadId && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-          <form onSubmit={handleUploadEvidence} style={{ background: "#fff", padding: 24, borderRadius: 8, width: 440 }}>
-            <h3 style={{ margin: "0 0 12px 0" }}>Upload Undertaking Evidence</h3>
-            <p style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
-              Upload signed compliance affidavit or municipal sanction order.
+        <div className="modal-overlay" onClick={() => setActiveUploadId(null)}>
+          <form onSubmit={handleUploadEvidence} className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">Upload Undertaking Evidence</div>
+            <p style={{ fontSize: 12.5, color: "var(--forest-muted)", marginBottom: 14 }}>
+              Attach compliance proof. The undertaking closes once verified by the Regional Officer.
             </p>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Document Reference / Name *</label>
+            <div className="form-group">
+              <label className="form-label">Document Filename *</label>
               <input
                 type="text"
-                className="input-text"
+                className="form-input"
                 value={evidenceName}
                 onChange={(e) => setEvidenceName(e.target.value)}
                 required
-                style={{ width: "100%" }}
               />
             </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Compliance Notes</label>
+            <div className="form-group">
+              <label className="form-label">Notes</label>
               <textarea
-                className="input-text"
+                className="form-textarea"
                 value={evidenceNote}
                 onChange={(e) => setEvidenceNote(e.target.value)}
-                rows={2}
-                placeholder="Details of deficiency rectified..."
-                style={{ width: "100%" }}
+                rows={3}
+                placeholder="Summary of compliance action taken..."
               />
             </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setActiveUploadId(null)}>Cancel</button>
-              <button type="submit" disabled={loading} className="btn btn-primary btn-sm">
-                {loading ? "Submitting..." : "Submit for Verification"}
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setActiveUploadId(null)}>
+                Cancel
+              </button>
+              <button type="submit" disabled={loading} className="btn btn-primary">
+                {loading ? "Submitting..." : "Submit"}
               </button>
             </div>
           </form>
@@ -133,46 +141,47 @@ export function UndertakingTable({
 
       {/* Verify / Reject Modal */}
       {activeVerifyId && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-          <form onSubmit={handleVerify} style={{ background: "#fff", padding: 24, borderRadius: 8, width: 440 }}>
-            <h3 style={{ margin: "0 0 12px 0" }}>
-              {verifyMode === "approve" ? "[+] Verify Undertaking Compliance" : "[-] Reject Compliance Evidence"}
-            </h3>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Officer Inspection Remarks *</label>
+        <div className="modal-overlay" onClick={() => setActiveVerifyId(null)}>
+          <form onSubmit={handleVerify} className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">
+              {verifyMode === "approve" ? "Verify Undertaking" : "Reject Evidence"}
+            </div>
+            <div className="form-group">
+              <label className="form-label">Remarks *</label>
               <textarea
-                className="input-text"
+                className="form-textarea"
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 required
                 rows={3}
-                placeholder={verifyMode === "approve" ? "Verified condition fully satisfied per submitted records." : "Deficiencies persist: specify reasons for rejection..."}
-                style={{ width: "100%" }}
               />
             </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setActiveVerifyId(null)}>Cancel</button>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setActiveVerifyId(null)}>
+                Cancel
+              </button>
               <button
                 type="submit"
                 disabled={loading}
-                className={`btn btn-sm ${verifyMode === "approve" ? "btn-primary" : "btn-danger"}`}
+                className={`btn ${verifyMode === "approve" ? "btn-success" : "btn-danger"}`}
               >
-                {loading ? "Recording..." : verifyMode === "approve" ? "Confirm Verification" : "Confirm Rejection"}
+                {loading ? "Saving..." : verifyMode === "approve" ? "Verify" : "Reject"}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Status Filter Buttons */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+      {/* Status Filter Tabs */}
+      <div className="tabs">
         {["ALL", "PENDING", "SUBMITTED", "VERIFIED", "OVERDUE"].map((s) => (
           <button
             key={s}
-            className={`btn btn-sm ${filterStatus === s ? "btn-primary" : "btn-secondary"}`}
+            type="button"
+            className={`tab ${filterStatus === s ? "active" : ""}`}
             onClick={() => setFilterStatus(s)}
           >
-            {s}
+            {s === "ALL" ? "All" : formatStatus(s)}
           </button>
         ))}
       </div>
@@ -184,9 +193,9 @@ export function UndertakingTable({
               <tr>
                 <th>Application</th>
                 <th>Institution</th>
-                <th>Title & Condition</th>
+                <th>Condition</th>
                 <th>Due Date</th>
-                <th>SLA Countdown</th>
+                <th>SLA</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -197,66 +206,67 @@ export function UndertakingTable({
                 return (
                   <tr key={ut.id}>
                     <td>
-                      <Link href={`/applications/${ut.applicationId}`} style={{ color: "#2a5298", fontWeight: 600 }}>
+                      <Link href={`/applications/${ut.applicationId}`} className="table-link font-mono">
                         {ut.applicationRefNo}
                       </Link>
                     </td>
-                    <td>{ut.institutionName}</td>
-                    <td style={{ maxWidth: 260 }}>
-                      <strong>{ut.title}</strong>
-                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{ut.condition}</div>
+                    <td style={{ fontWeight: 700 }}>{ut.institutionName}</td>
+                    <td style={{ maxWidth: 290 }}>
+                      <div style={{ fontWeight: 700, color: "var(--forest)" }}>{ut.title}</div>
+                      <div style={{ fontSize: 12, color: "var(--forest-muted)", marginTop: 2 }}>{ut.condition}</div>
                     </td>
                     <td>{new Date(ut.dueDate).toLocaleDateString()}</td>
                     <td>
                       {["PENDING", "OVERDUE", "SUBMITTED"].includes(ut.status) ? (
                         <span className={`sla-chip ${days < 0 ? "red" : days <= 7 ? "amber" : "green"}`}>
-                          {days < 0 ? `[OVERDUE ${Math.abs(days)}d]` : `[DUE ${days}d]`}
+                          {days < 0 ? `Overdue ${Math.abs(days)}d` : `Due ${days}d`}
                         </span>
                       ) : (
-                        "—"
+                        <span style={{ color: "var(--forest-light)" }}>—</span>
                       )}
                     </td>
                     <td>
-                      <span className={`badge ${statusColors[ut.status] ?? "badge-gray"}`}>{ut.status}</span>
+                      <span className={`badge ${statusColors[ut.status] ?? "badge-gray"}`}>{formatStatus(ut.status)}</span>
                     </td>
                     <td>
                       <div style={{ display: "flex", gap: 6 }}>
-                        {userRole === "INSTITUTION" && (ut.status === "PENDING" || ut.status === "OVERDUE" || ut.status === "REJECTED") && (
-                          <button
-                            className="btn btn-primary btn-sm"
-                            onClick={() => {
-                              setActiveUploadId(ut.id);
-                              setEvidenceName(`compliance_${ut.applicationRefNo}.pdf`);
-                            }}
-                          >
-                            [^] Upload Evidence
-                          </button>
-                        )}
-                        {(userRole === "REGIONAL_OFFICER" || userRole === "ADMIN" || userRole === "BUREAU_OFFICER") && ut.status === "SUBMITTED" && (
-                          <>
+                        {userRole === "INSTITUTION" &&
+                          (ut.status === "PENDING" || ut.status === "OVERDUE" || ut.status === "REJECTED") && (
                             <button
                               className="btn btn-primary btn-sm"
-                              style={{ background: "#16a34a" }}
                               onClick={() => {
-                                setActiveVerifyId(ut.id);
-                                setVerifyMode("approve");
-                                setRemarks("Evidence verified and found in order.");
+                                setActiveUploadId(ut.id);
+                                setEvidenceName(`compliance_${ut.applicationRefNo}.pdf`);
                               }}
                             >
-                              [+] Verify
+                              Upload Evidence
                             </button>
-                            <button
-                              className="btn btn-danger btn-sm"
-                              onClick={() => {
-                                setActiveVerifyId(ut.id);
-                                setVerifyMode("reject");
-                                setRemarks("Evidence insufficient: deficiencies unresolved.");
-                              }}
-                            >
-                              [-] Reject
-                            </button>
-                          </>
-                        )}
+                          )}
+                        {(userRole === "REGIONAL_OFFICER" || userRole === "ADMIN" || userRole === "BUREAU_OFFICER") &&
+                          ut.status === "SUBMITTED" && (
+                            <>
+                              <button
+                                className="btn btn-success btn-sm"
+                                onClick={() => {
+                                  setActiveVerifyId(ut.id);
+                                  setVerifyMode("approve");
+                                  setRemarks("Verified and found in order.");
+                                }}
+                              >
+                                Verify
+                              </button>
+                              <button
+                                className="btn btn-danger btn-sm"
+                                onClick={() => {
+                                  setActiveVerifyId(ut.id);
+                                  setVerifyMode("reject");
+                                  setRemarks("Evidence insufficient.");
+                                }}
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
                       </div>
                     </td>
                   </tr>
@@ -265,7 +275,7 @@ export function UndertakingTable({
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={7}>
-                    <div className="empty-state"><p>No undertakings found matching criteria.</p></div>
+                    <div className="empty-state"><p>No undertakings found.</p></div>
                   </td>
                 </tr>
               )}

@@ -31,11 +31,23 @@ export async function GET(request: NextRequest) {
   });
 
   if (format === "csv") {
-    const csv = [
-      "seq,ts,actor,actorRole,action,entityType,entityId,hash",
-      ...logs.map((l) => `${l.seq},${l.ts.toISOString()},${l.actor?.name ?? "system"},${l.actorRole ?? ""},${l.action},${l.entityType},${l.entityId},${l.hash.slice(0, 16)}`),
-    ].join("\n");
-    return new NextResponse(csv, { headers: { "Content-Type": "text/csv", "Content-Disposition": "attachment; filename=audit.csv" } });
+    const rows = [
+      ["Seq", "Timestamp", "Actor", "Role", "Action", "Entity Type", "Entity ID", "SHA-256 Hash"],
+      ...logs.map((l) => [
+        String(l.seq),
+        l.ts.toISOString(),
+        l.actor?.name ?? "System",
+        l.actorRole ?? "SYSTEM",
+        l.action,
+        l.entityType,
+        l.entityId,
+        l.hash,
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    return new NextResponse(csv, {
+      headers: { "Content-Type": "text/csv", "Content-Disposition": "attachment; filename=audit-ledger.csv" },
+    });
   }
 
   return NextResponse.json(logs);

@@ -27,27 +27,22 @@ export default async function UndertakingsPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Undertakings & Statutory Conditions</h1>
+          <h1 className="page-title">Undertakings</h1>
           <p className="page-subtitle">{undertakings.length} conditional approval undertaking(s)</p>
         </div>
       </div>
 
       <div className="kpi-grid" style={{ marginBottom: 24 }}>
-        {["PENDING", "SUBMITTED", "VERIFIED", "OVERDUE"].map((status) => (
-          <div
-            key={status}
-            className={`kpi-card ${
-              status === "OVERDUE" ? "red" : status === "SUBMITTED" ? "amber" : status === "VERIFIED" ? "green" : ""
-            }`}
-          >
-            <div className="kpi-label">{status}</div>
-            <div
-              className="kpi-value"
-              style={{
-                color: status === "OVERDUE" ? "#ef4444" : status === "VERIFIED" ? "#22c55e" : undefined,
-              }}
-            >
-              {undertakings.filter((u) => u.status === status).length}
+        {[
+          { status: "PENDING", label: "Pending", cls: "", color: undefined },
+          { status: "SUBMITTED", label: "Submitted", cls: "amber", color: "var(--amber)" },
+          { status: "VERIFIED", label: "Verified", cls: "green", color: "var(--green)" },
+          { status: "OVERDUE", label: "Overdue", cls: "red", color: "var(--red)" },
+        ].map((item) => (
+          <div key={item.status} className={`kpi-card ${item.cls}`}>
+            <div className="kpi-label">{item.label}</div>
+            <div className="kpi-value" style={{ color: item.color }}>
+              {undertakings.filter((u) => u.status === item.status).length}
             </div>
           </div>
         ))}

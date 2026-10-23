@@ -19,9 +19,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const { searchParams } = new URL(request.url);
   const format = searchParams.get("format");
   const now = await getNow();
+  const appRegionWhere = user.role === "REGIONAL_OFFICER" ? { regionId: user.regionId! } : {};
 
   if (type === "pendency") {
     const apps = await prisma.application.findMany({
+      where: appRegionWhere,
       include: { institution: { select: { name: true } }, deadlineItems: { where: { state: "OPEN", kind: "STAGE_TIMELINE" }, take: 1 } },
     });
     const data = apps.map((a) => {
@@ -45,13 +47,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       include: { application: { include: { institution: { select: { name: true, type: true } } } } },
     });
     const data = visits.map((v) => ({
-      applicationRefNo: v.application.institution.name, institution: v.application.institution.name,
+      applicationRefNo: v.application.refNo, institution: v.application.institution.name,
       status: v.status, queuedAt: v.queuedAt.toISOString(), scheduledFor: v.scheduledFor?.toISOString() ?? "",
       completedAt: v.completedAt?.toISOString() ?? "", reportRef: v.reportRef ?? "", isNewInstitution: v.isNewInstitution,
     }));
     if (format === "csv") return csvResponse([
-      ["Institution", "Status", "Queued At", "Scheduled For", "Completed At", "Report Ref", "New Institution"],
-      ...data.map((d) => [d.institution, d.status, d.queuedAt, d.scheduledFor, d.completedAt, d.reportRef, String(d.isNewInstitution)]),
+      ["Application Ref", "Institution", "Status", "Queued At", "Scheduled For", "Completed At", "Report Ref", "New Institution"],
+      ...data.map((d) => [d.applicationRefNo, d.institution, d.status, d.queuedAt, d.scheduledFor, d.completedAt, d.reportRef, String(d.isNewInstitution)]),
     ], "evc-report");
     return NextResponse.json(data);
   }

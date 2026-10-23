@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { differenceInCalendarDays } from "date-fns";
+import { formatDocType } from "@/lib/format";
 
 type DocItem = {
   id: string;
@@ -32,6 +33,7 @@ export function DocumentTable({
   );
   const [renewalFileName, setRenewalFileName] = useState("registered_lease_extension.pdf");
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const filtered = documents.filter((doc) => {
     const days = differenceInCalendarDays(new Date(doc.validUntil), now);
@@ -58,7 +60,7 @@ export function DocumentTable({
       setActiveRenewId(null);
       router.refresh();
     } catch {
-      alert("Failed to submit renewal");
+      setErrorMsg("Failed to submit renewal.");
     } finally {
       setLoading(false);
     }
@@ -66,6 +68,7 @@ export function DocumentTable({
 
   async function handleVerify(docId: string, verified: boolean) {
     setLoading(true);
+    setErrorMsg(null);
     try {
       await fetch(`/api/documents/${docId}/verify`, {
         method: "POST",
@@ -74,7 +77,7 @@ export function DocumentTable({
       });
       router.refresh();
     } catch {
-      alert("Failed to verify document renewal");
+      setErrorMsg("Failed to verify document renewal.");
     } finally {
       setLoading(false);
     }
@@ -82,40 +85,42 @@ export function DocumentTable({
 
   return (
     <div>
+      {errorMsg && (
+        <div style={{ padding: "10px 14px", marginBottom: 12, borderRadius: 10, background: "var(--red-bg)", border: "1px solid var(--red-border)", color: "var(--red)", fontSize: 13, fontWeight: 600 }}>
+          {errorMsg}
+        </div>
+      )}
       {/* Upload Renewal Modal */}
       {activeRenewId && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-          <form onSubmit={handleRenew} style={{ background: "#fff", padding: 24, borderRadius: 8, width: 440 }}>
-            <h3 style={{ margin: "0 0 12px 0" }}>Submit Document / Lease Renewal</h3>
-            <p style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
-              Provide renewed registration term and upload legal instrument.
-            </p>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>New Expiry Date (Valid Until) *</label>
+        <div className="modal-overlay" onClick={() => setActiveRenewId(null)}>
+          <form onSubmit={handleRenew} className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">Submit Renewal</div>
+            <div className="form-group">
+              <label className="form-label">New Expiry Date *</label>
               <input
                 type="date"
-                className="input-text"
+                className="form-input"
                 value={newValidUntil}
                 onChange={(e) => setNewValidUntil(e.target.value)}
                 required
-                style={{ width: "100%" }}
               />
             </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Renewal Attachment (.pdf) *</label>
+            <div className="form-group">
+              <label className="form-label">Attachment (.pdf) *</label>
               <input
                 type="text"
-                className="input-text"
+                className="form-input"
                 value={renewalFileName}
                 onChange={(e) => setRenewalFileName(e.target.value)}
                 required
-                style={{ width: "100%" }}
               />
             </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setActiveRenewId(null)}>Cancel</button>
-              <button type="submit" disabled={loading} className="btn btn-primary btn-sm">
-                {loading ? "Submitting..." : "Submit Renewal for Verification"}
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setActiveRenewId(null)}>
+                Cancel
+              </button>
+              <button type="submit" disabled={loading} className="btn btn-primary">
+                {loading ? "Submitting..." : "Submit Renewal"}
               </button>
             </div>
           </form>
@@ -123,17 +128,18 @@ export function DocumentTable({
       )}
 
       {/* Filter Tabs */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+      <div className="tabs">
         {[
-          { key: "ALL", label: "All Documents" },
-          { key: "EXPIRING_90", label: "Expiring ≤90 Days" },
+          { key: "ALL", label: "All" },
+          { key: "EXPIRING_90", label: "Expiring ≤90d" },
           { key: "EXPIRED", label: "Expired" },
           { key: "RENEWAL_SUBMITTED", label: "Awaiting Verification" },
           { key: "VALID", label: "Valid" },
         ].map((f) => (
           <button
             key={f.key}
-            className={`btn btn-sm ${filterBucket === f.key ? "btn-primary" : "btn-secondary"}`}
+            type="button"
+            className={`tab ${filterBucket === f.key ? "active" : ""}`}
             onClick={() => setFilterBucket(f.key)}
           >
             {f.label}
@@ -147,10 +153,10 @@ export function DocumentTable({
             <thead>
               <tr>
                 <th>Institution</th>
-                <th>Doc Type</th>
+                <th>Type</th>
                 <th>Title</th>
                 <th>Valid Until</th>
-                <th>Validity SLA</th>
+                <th>Validity</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -160,14 +166,14 @@ export function DocumentTable({
                 const days = differenceInCalendarDays(new Date(doc.validUntil), now);
                 return (
                   <tr key={doc.id}>
-                    <td><strong>{doc.institutionName}</strong></td>
-                    <td><span className="badge badge-blue">{doc.docType.replace("_", " ")}</span></td>
+                    <td style={{ fontWeight: 700 }}>{doc.institutionName}</td>
+                    <td><span className="badge badge-blue">{formatDocType(doc.docType)}</span></td>
                     <td>{doc.title}</td>
                     <td>{new Date(doc.validUntil).toLocaleDateString()}</td>
-                    <td style={{ minWidth: 160 }}>
+                    <td style={{ minWidth: 165 }}>
                       <div style={{ marginBottom: 4 }}>
                         <span className={`sla-chip ${days < 0 ? "red" : days <= 30 ? "red" : days <= 90 ? "amber" : "green"}`}>
-                          {days < 0 ? `[EXPIRED ${Math.abs(days)}d]` : `[VALID ${days}d]`}
+                          {days < 0 ? `Expired ${Math.abs(days)}d` : `${days}d left`}
                         </span>
                       </div>
                       <div
@@ -177,7 +183,7 @@ export function DocumentTable({
                         <div
                           className={`validity-bar-fill ${days < 0 ? "expired" : days <= 30 ? "critical" : days <= 90 ? "warn" : "ok"}`}
                           style={{
-                            width: `${days < 0 ? 100 : Math.min(100, Math.max(4, (days / 365) * 100))}%`,
+                            width: `${days < 0 ? 100 : Math.min(100, Math.max(6, (days / 365) * 100))}%`,
                           }}
                         />
                       </div>
@@ -195,35 +201,35 @@ export function DocumentTable({
                     </td>
                     <td>
                       <div style={{ display: "flex", gap: 6 }}>
-                        {userRole === "INSTITUTION" && (days <= 90 || doc.status === "EXPIRED" || doc.status === "RENEWAL_REJECTED") && (
-                          <button
-                            className="btn btn-primary btn-sm"
-                            onClick={() => {
-                              setActiveRenewId(doc.id);
-                              setRenewalFileName(`renewed_${doc.docType.toLowerCase()}_${doc.id.slice(-5)}.pdf`);
-                            }}
-                          >
-                            [^] Submit Renewal
-                          </button>
-                        )}
+                        {userRole === "INSTITUTION" &&
+                          (days <= 90 || doc.status === "EXPIRED" || doc.status === "RENEWAL_REJECTED") && (
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => {
+                                setActiveRenewId(doc.id);
+                                setRenewalFileName(`renewed_${doc.docType.toLowerCase()}_${doc.id.slice(-5)}.pdf`);
+                              }}
+                            >
+                              Submit Renewal
+                            </button>
+                          )}
 
                         {(userRole === "REGIONAL_OFFICER" || userRole === "ADMIN" || userRole === "BUREAU_OFFICER") &&
                           doc.status === "RENEWAL_SUBMITTED" && (
                             <>
                               <button
-                                className="btn btn-primary btn-sm"
-                                style={{ background: "#16a34a" }}
+                                className="btn btn-success btn-sm"
                                 disabled={loading}
                                 onClick={() => handleVerify(doc.id, true)}
                               >
-                                [+] Verify
+                                Verify
                               </button>
                               <button
                                 className="btn btn-danger btn-sm"
                                 disabled={loading}
                                 onClick={() => handleVerify(doc.id, false)}
                               >
-                                [-] Reject
+                                Reject
                               </button>
                             </>
                           )}
@@ -235,7 +241,7 @@ export function DocumentTable({
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={7}>
-                    <div className="empty-state"><p>No documents found matching criteria.</p></div>
+                    <div className="empty-state"><p>No documents found.</p></div>
                   </td>
                 </tr>
               )}

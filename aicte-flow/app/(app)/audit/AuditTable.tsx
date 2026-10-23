@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatAction, formatEntityType, formatRole } from "@/lib/format";
 
 type LogEntry = {
   seq: number;
@@ -43,7 +44,7 @@ export function AuditTable({
     } catch {
       setVerifyStatus({
         running: false,
-        result: { ok: false, message: "Verification failed to complete" },
+        result: { ok: false, message: "Verification failed" },
       });
     }
   }
@@ -80,17 +81,15 @@ export function AuditTable({
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="text"
-            className="input-text"
-            placeholder="Filter by action, role, entity..."
-            value={filterAction}
-            onChange={(e) => setFilterAction(e.target.value)}
-            style={{ width: 260 }}
-          />
-        </div>
+      <div className="filter-bar" style={{ justifyContent: "space-between" }}>
+        <input
+          type="text"
+          className="form-input"
+          placeholder="Filter by action, role, or entity..."
+          value={filterAction}
+          onChange={(e) => setFilterAction(e.target.value)}
+          style={{ minWidth: 260, flex: 1, maxWidth: 360 }}
+        />
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {isAdmin && (
@@ -98,33 +97,42 @@ export function AuditTable({
               <button
                 onClick={() => handleTamper("simulate")}
                 disabled={tamperBusy || tamperOn}
-                className="btn btn-secondary"
-                title="Demo only: mutate one payload without updating its hash"
+                className="btn btn-danger btn-sm"
               >
-                [~] Simulate Tamper
+                Simulate Tamper
               </button>
               <button
                 onClick={() => handleTamper("restore")}
                 disabled={tamperBusy || !tamperOn}
-                className="btn btn-secondary"
+                className="btn btn-secondary btn-sm"
               >
-                [&lt;-] Restore
+                Restore
               </button>
             </>
           )}
           <button
             onClick={handleVerify}
             disabled={verifyStatus.running}
-            className="btn btn-primary"
-            style={{ background: "#0f766e" }}
+            className="btn btn-primary btn-sm"
           >
-            {verifyStatus.running ? "Verifying SHA-256 chain..." : "[VERIFY] Check Chain Integrity"}
+            {verifyStatus.running ? "Verifying..." : "Verify Chain"}
           </button>
         </div>
       </div>
 
       {tamperMsg && (
-        <div style={{ padding: "10px 14px", marginBottom: 12, borderRadius: 8, background: "#fff7ed", border: "1px solid #fed7aa", color: "#9a3412", fontSize: 13 }}>
+        <div
+          style={{
+            padding: "12px 16px",
+            marginBottom: 14,
+            borderRadius: 12,
+            background: "var(--amber-bg)",
+            border: "1.5px solid var(--amber-border)",
+            color: "var(--amber)",
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
           {tamperMsg}
         </div>
       )}
@@ -132,21 +140,21 @@ export function AuditTable({
       {verifyStatus.result && (
         <div
           style={{
-            padding: "14px 18px",
-            borderRadius: 8,
+            padding: "12px 16px",
+            borderRadius: 12,
             marginBottom: 16,
-            background: verifyStatus.result.ok ? "#ecfdf5" : "#fef2f2",
-            border: `1px solid ${verifyStatus.result.ok ? "#a7f3d0" : "#fecaca"}`,
-            color: verifyStatus.result.ok ? "#065f46" : "#991b1b",
+            background: verifyStatus.result.ok ? "var(--green-bg)" : "var(--red-bg)",
+            border: `1.5px solid ${verifyStatus.result.ok ? "var(--green-border)" : "var(--red-border)"}`,
+            color: verifyStatus.result.ok ? "var(--green)" : "var(--red)",
           }}
         >
           {verifyStatus.result.ok ? (
             <div>
-              <strong>[VALID] Hash Chain Verification Passed:</strong> All cryptographic hashes in the ledger are verified and intact from sequence #1. No tampering detected.
+              <strong>Chain Verified:</strong> All SHA-256 hashes match from sequence #1.
             </div>
           ) : (
             <div>
-              <strong>[ALERT] Cryptographic Chain Violation Detected!</strong> Tamper detected at sequence #{verifyStatus.result.brokenAtSeq}. The computed hash does not match stored block.
+              <strong>Hash Mismatch Detected:</strong> Chain broken at sequence #{verifyStatus.result.brokenAtSeq}.
             </div>
           )}
         </div>
@@ -157,12 +165,12 @@ export function AuditTable({
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ width: 60 }}>Seq</th>
+                <th style={{ width: 64 }}>Seq</th>
                 <th>Timestamp</th>
-                <th>Actor</th>
+                <th>Role</th>
                 <th>Action</th>
                 <th>Entity</th>
-                <th>Hash Digest</th>
+                <th>SHA-256 Hash</th>
                 <th>Payload</th>
               </tr>
             </thead>
@@ -176,23 +184,34 @@ export function AuditTable({
 
                 return (
                   <tr key={log.seq}>
-                    <td><strong>#{log.seq}</strong></td>
-                    <td style={{ fontSize: 12, color: "#64748b" }}>
+                    <td className="font-mono"><strong>#{log.seq}</strong></td>
+                    <td style={{ fontSize: 12, color: "var(--forest-muted)", whiteSpace: "nowrap" }}>
                       {new Date(log.ts).toLocaleString()}
                     </td>
                     <td>
                       {log.actorRole ? (
-                        <span className="badge badge-blue">{log.actorRole}</span>
+                        <span className="badge badge-blue">{formatRole(log.actorRole)}</span>
                       ) : (
-                        <span className="badge badge-gray">SYSTEM</span>
+                        <span className="badge badge-gray">System</span>
                       )}
                     </td>
-                    <td><span className="badge badge-amber">{log.action}</span></td>
+                    <td><span className="badge badge-amber">{formatAction(log.action)}</span></td>
                     <td>
-                      {log.entityType} <small style={{ color: "#94a3b8" }}>({log.entityId.slice(0, 8)}...)</small>
+                      <span style={{ fontWeight: 600 }}>{formatEntityType(log.entityType)}</span>{" "}
+                      <small className="font-mono" style={{ color: "var(--forest-muted)" }}>
+                        ({log.entityId.slice(0, 8)})
+                      </small>
                     </td>
                     <td>
-                      <code style={{ fontSize: 11, background: "#f1f5f9", padding: "2px 4px", borderRadius: 4 }}>
+                      <code
+                        style={{
+                          fontSize: 11,
+                          background: "var(--bg)",
+                          border: "1px solid var(--border)",
+                          padding: "2px 6px",
+                          borderRadius: 6,
+                        }}
+                      >
                         {log.hash.slice(0, 10)}...{log.hash.slice(-6)}
                       </code>
                     </td>
@@ -204,7 +223,18 @@ export function AuditTable({
                         {isExpanded ? "Hide" : "Inspect"}
                       </button>
                       {isExpanded && (
-                        <pre style={{ marginTop: 8, padding: 8, background: "#0f172a", color: "#38bdf8", borderRadius: 6, fontSize: 11, overflowX: "auto" }}>
+                        <pre
+                          style={{
+                            marginTop: 8,
+                            padding: 10,
+                            background: "var(--forest)",
+                            color: "var(--highlighter-yellow)",
+                            borderRadius: 10,
+                            fontSize: 11,
+                            overflowX: "auto",
+                            maxWidth: 380,
+                          }}
+                        >
                           {prettyPayload}
                         </pre>
                       )}
@@ -215,7 +245,7 @@ export function AuditTable({
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={7}>
-                    <div className="empty-state"><p>No audit records found matching criteria.</p></div>
+                    <div className="empty-state"><p>No audit records found.</p></div>
                   </td>
                 </tr>
               )}

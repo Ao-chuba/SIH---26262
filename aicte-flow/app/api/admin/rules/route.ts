@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/auth";
+import { isDenied, requireRoleResponse } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { appendAudit } from "@/lib/audit";
 import { ROUTES, STAGES, ALERT_RULES, APP_TYPE_ROUTE_MAP } from "@/config/rules";
 
 export async function GET() {
-  await requireRole(["ADMIN", "BUREAU_OFFICER"]);
+  const gate = await requireRoleResponse(["ADMIN", "BUREAU_OFFICER"]);
+  if (isDenied(gate)) return gate;
   const configs = await prisma.ruleConfig.findMany();
   const configMap = Object.fromEntries(configs.map((c) => [c.key, JSON.parse(c.value)]));
   return NextResponse.json({
@@ -17,7 +18,8 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
-  const user = await requireRole(["ADMIN"]);
+  const user = await requireRoleResponse(["ADMIN"]);
+  if (isDenied(user)) return user;
   const body = await request.json();
   const { key, value } = body;
   if (!key || value === undefined) {
