@@ -398,6 +398,148 @@ export async function returnApplication(
 }
 
 /**
+ * Adaptive route: refer application to SAC/SHC hearing (officer decision, not auto).
+ * Switches route to one that includes SAC_SHC when needed, then opens SAC_SHC stage.
+ */
+export async function referToSacShc(
+  applicationId: string,
+  actor: User,
+  reason: string
+): Promise<Application> {
+  if (!reason || reason.trim().length < 10) {
+    throw new Error("Referral reason must be at least 10 characters");
+  }
+
+  if (
+    actor.role !== "ADMIN" &&
+    actor.role !== "REGIONAL_OFFICER" &&
+    actor.role !== "BUREAU_OFFICER"
+  ) {
+    throw new Error(`Role ${actor.role} cannot refer to SAC/SHC`);
+  }
+
+  const app = await prisma.application.findUniqueOrThrow({ where: { id: applicationId } });
+
+  if (app.status !== "IN_PROGRESS" && app.status !== "RETURNED") {
+    throw new Error(`Cannot refer application in status ${app.status}`);
+  }
+
+  if (app.currentStageKey === "SAC_SHC") {
+    throw new Error("Application is already at SAC/SHC");
+  }
+
+  if (app.currentStageKey === "DECISION_PENDING") {
+    throw new Error("Cannot refer after decision stage");
+  }
+
+  const stages = getRouteStages(app.route);
+  let newRoute = app.route;
+  if (!stages.includes("SAC_SHC")) {
+    // Keep EVC path when already past scrutiny; otherwise full hearing route
+    const pastScrutiny = ["EVC_QUEUE", "EVC_SCHEDULED", "EVC_REPORT"].includes(app.currentStageKey);
+    newRoute = pastScrutiny ? "EVC_SAC_SHC" : "SCRUTINY_EVC_SAC_SHC";
+  }
+
+  const now = await getNow();
+  const sac = await prisma.user.findFirst({ where: { role: "SAC_SHC_MEMBER" } });
+  const timelineDays = STAGES.SAC_SHC?.timelineDays ?? 10;
+
+  const currentStageRecord = await prisma.applicationStage.findFirst({
+    where: { applicationId, stageKey: app.currentStageKey, exitedAt: null },
+    orderBy: { enteredAt: "desc" },
+  });
+
+  const openDeadline = await prisma.deadlineItem.findFirst({
+    where: { refId: applicationId, refType: "Application", state: "OPEN", kind: "STAGE_TIMELINE" },
+    orderBy: { openedAt: "desc" },
+  });
+
+  const updatedApp = await prisma.$transaction(async (tx) => {
+    if (currentStageRecord) {
+      await tx.applicationStage.update({
+        where: { id: currentStageRecord.id },
+        data: { exitedAt: now, outcome: "REFERRED_SAC_SHC", notes: reason },
+      });
+    }
+
+    if (openDeadline) {
+      await tx.deadlineItem.update({
+        where: { id: openDeadline.id },
+        data: { state: "CANCELLED", closedAt: now },
+      });
+    }
+
+    await tx.observation.create({
+      data: {
+        applicationId,
+        stageKey: app.currentStageKey,
+        authorId: actor.id,
+        text: reason,
+        kind: "OBSERVATION",
+      },
+    });
+
+    await tx.applicationStage.create({
+      data: {
+        applicationId,
+        stageKey: "SAC_SHC",
+        enteredAt: now,
+        enteredById: actor.id,
+      },
+    });
+
+    const updated = await tx.application.update({
+      where: { id: applicationId },
+      data: {
+        route: newRoute,
+        status: "IN_PROGRESS",
+        currentStageKey: "SAC_SHC",
+        stageEnteredAt: now,
+        assignedToId: sac?.id ?? null,
+        updatedAt: now,
+      },
+    });
+
+    await tx.deadlineItem.create({
+      data: {
+        kind: "STAGE_TIMELINE",
+        refType: "Application",
+        refId: applicationId,
+        institutionId: app.institutionId,
+        regionId: app.regionId,
+        ownerUserId: sac?.id,
+        title: `${app.refNo} – ${STAGES.SAC_SHC?.label ?? "SAC/SHC"} deadline`,
+        dueAt: new Date(now.getTime() + timelineDays * 86400000),
+        applicationId,
+      },
+    });
+
+    return updated;
+  });
+
+  await appendAudit({
+    actorId: actor.id,
+    actorRole: actor.role,
+    action: "REFERRED_SAC_SHC",
+    entityType: "Application",
+    entityId: applicationId,
+    payload: { reason, fromStage: app.currentStageKey, fromRoute: app.route, toRoute: newRoute },
+  });
+
+  if (sac) {
+    await notify({
+      toUserId: sac.id,
+      kind: "INFO",
+      subject: `Referred to SAC/SHC: ${app.refNo}`,
+      body: `Application ${app.refNo} has been referred for hearing. Reason: ${reason}`,
+      applicationId,
+    });
+  }
+
+  return updatedApp;
+}
+
+/**
  * Schedule an EVC Visit and transition application to EVC_SCHEDULED
  */
 export async function scheduleEvc(

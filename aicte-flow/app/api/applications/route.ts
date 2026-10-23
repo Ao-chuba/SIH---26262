@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { routeApplication } from "@/lib/workflow/workflow";
 import { appendAudit } from "@/lib/audit";
 import { APP_TYPE_ROUTE_MAP } from "@/config/rules";
-import { buildMetrics } from "@/lib/aph";
+import { buildMetrics, isValidIntake, requiredFaculty } from "@/lib/aph";
 import { z } from "zod";
 
 export async function GET(request: NextRequest) {
@@ -49,14 +49,33 @@ export async function POST(request: NextRequest) {
   const institutionId = user.institutionId!;
   const institution = await prisma.institution.findUniqueOrThrow({ where: { id: institutionId } });
 
+  const intake = studentIntake ?? 60;
+  if (!isValidIntake(intake)) {
+    return NextResponse.json(
+      {
+        error: `APH intake gate: ${intake} seats is not a valid division of 30/60. Correct the intake before submission (e.g. 30, 60, 120, 180).`,
+      },
+      { status: 400 }
+    );
+  }
+
   const route = APP_TYPE_ROUTE_MAP[applicationType] ?? "ONLY_SCRUTINY";
   const refNo = `APP-${Date.now().toString().slice(-8)}`;
-  const metrics = buildMetrics(studentIntake ?? 60, true);
-  if (typeof facultyCount === "number") metrics.facultyCount = facultyCount;
-  if (typeof studentIntake === "number") {
-    metrics.studentIntake = studentIntake;
-    metrics.requiredLabAreaSqm = Math.ceil(studentIntake * 5);
+  const metrics = buildMetrics(intake, true);
+  if (typeof facultyCount === "number") {
+    metrics.facultyCount = facultyCount;
+    const req = requiredFaculty(intake);
+    if (facultyCount < req) {
+      return NextResponse.json(
+        {
+          error: `APH faculty gate: ${facultyCount} faculty for ${intake} intake fails 1:20 (need ≥ ${req}). Fix before submission or file with an undertaking later.`,
+        },
+        { status: 400 }
+      );
+    }
   }
+  metrics.studentIntake = intake;
+  metrics.requiredLabAreaSqm = Math.ceil(intake * 5);
 
   const app = await prisma.application.create({
     data: {
