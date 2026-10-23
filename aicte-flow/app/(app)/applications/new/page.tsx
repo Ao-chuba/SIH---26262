@@ -38,6 +38,7 @@ export default function NewApplicationPage() {
         body: JSON.stringify({
           applicationType: appType,
           details: `${program} - ${courseName} (Intake: ${intake}, Academic Year: ${academicYear}). ${details}`,
+          studentIntake: Number(intake) || 60,
         }),
       });
 

@@ -56,7 +56,14 @@ export function AdminControls({
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      setTickResult(data);
+      const summary = data.tick ?? data;
+      setTickResult({
+        remindersFired: summary.remindersFired ?? 0,
+        overdueMarked: summary.overdueMarked ?? 0,
+        escalations: summary.escalations ?? 0,
+        tickedAt: summary.tickedAt ?? data.simulatedNow,
+        simulatedNow: data.simulatedNow,
+      });
       router.refresh();
     } catch {
       alert("Failed to update clock");
@@ -71,7 +78,12 @@ export function AdminControls({
     try {
       const res = await fetch("/api/engine/tick", { method: "POST" });
       const data = await res.json();
-      setTickResult(data);
+      setTickResult({
+        remindersFired: data.remindersFired ?? 0,
+        overdueMarked: data.overdueMarked ?? 0,
+        escalations: data.escalations ?? 0,
+        tickedAt: data.tickedAt,
+      });
       router.refresh();
     } catch {
       alert("Failed to run tick");
@@ -120,27 +132,46 @@ export function AdminControls({
 
   return (
     <div>
-      {/* Toast Notification of Tick Result */}
+      {/* Simulation Impact Summary */}
       {tickResult && (
         <div
           style={{
             marginBottom: 20,
-            padding: "16px 20px",
-            background: "#eff6ff",
-            border: "1px solid #bfdbfe",
-            borderRadius: 8,
-            color: "#1e40af",
-            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
+            padding: "18px 22px",
+            background: "#f8fafc",
+            border: "1px solid #cbd5e1",
+            borderRadius: 10,
+            color: "#0f172a",
+            boxShadow: "0 8px 24px -8px rgba(15,23,42,0.12)",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <strong style={{ fontSize: 15 }}>⚡ Deadline Engine Tick Executed:</strong>
-              <div style={{ marginTop: 6, display: "flex", gap: 16, fontSize: 13 }}>
-                <span>🔔 Reminders Fired: <strong>{tickResult.remindersFired ?? 0}</strong></span>
-                <span>🔴 Overdue Marked: <strong>{tickResult.overdueMarked ?? 0}</strong></span>
-                <span>🔺 Escalations Raised: <strong>{tickResult.escalations ?? 0}</strong></span>
-                <span>🕒 Simulated Now: <strong>{tickResult.tickedAt ? new Date(tickResult.tickedAt).toLocaleDateString() : new Date().toLocaleDateString()}</strong></span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <strong style={{ fontSize: 16 }}>⚡ Simulation Impact Summary</strong>
+              <p style={{ fontSize: 12, color: "#64748b", margin: "4px 0 12px" }}>
+                Deadline engine results after this clock change / tick. Open linked modules to inspect live effects.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                <a href="/notifications" style={{ textDecoration: "none", padding: 12, borderRadius: 8, background: "#eff6ff", border: "1px solid #bfdbfe" }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#1d4ed8" }}>{tickResult.remindersFired ?? 0}</div>
+                  <div style={{ fontSize: 12, color: "#1e40af" }}>Reminders fired → Delivery Log</div>
+                </a>
+                <a href="/undertakings" style={{ textDecoration: "none", padding: 12, borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca" }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#b91c1c" }}>{tickResult.overdueMarked ?? 0}</div>
+                  <div style={{ fontSize: 12, color: "#991b1b" }}>Overdue marked → Undertakings / Docs</div>
+                </a>
+                <a href="/escalations" style={{ textDecoration: "none", padding: 12, borderRadius: 8, background: "#faf5ff", border: "1px solid #e9d5ff" }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#7c3aed" }}>{tickResult.escalations ?? 0}</div>
+                  <div style={{ fontSize: 12, color: "#6b21a8" }}>Escalations → Escalations inbox</div>
+                </a>
+              </div>
+              <div style={{ marginTop: 10, fontSize: 12, color: "#64748b" }}>
+                Clock:{" "}
+                <strong>
+                  {tickResult.tickedAt
+                    ? new Date(tickResult.tickedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                    : "—"}
+                </strong>
               </div>
             </div>
             <button className="btn btn-secondary btn-sm" onClick={() => setTickResult(null)}>Dismiss</button>

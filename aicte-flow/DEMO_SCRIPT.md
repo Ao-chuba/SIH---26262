@@ -102,11 +102,9 @@
 
 ---
 
-## Planned demo beats (after root `README.md` §19 ships)
+## Act add-ons (§19 — ship with the live demo)
 
-> Do not present these until the features exist. Then fold them into the acts above and remove this stub.
-
-1. **APH Norms card** (Scrutiny / app detail): show pass/fail for 1:20 ratio, intake multiple, cadre — *"assists the officer; does not decide."*
-2. **Dual-Clock bar** after return → reply: officer processing days vs institution deficiency delay.
-3. **Clock +7 / +30**: open Simulation Impact Summary (reminders / overdue / escalations with deep links), then Delivery Log.
-4. **Audit**: Verify ✅ → Simulate Tamper → Verify ❌ at seq N → Restore → Verify ✅.
+1. **APH Norms card** — Open `DEMO-NEW-INST-001`: show pass/fail for 1:20 ratio / intake / cadre / lab. Say: *"assists the officer; does not decide."*
+2. **Dual-Clock bar** — Same app: officer processing days vs institution deficiency delay after the seeded return.
+3. **Clock +7 / +30** (Admin): show **Simulation Impact Summary** cards linking to Notifications / Undertakings / Escalations, then Delivery Log.
+4. **Audit** (Admin): Verify ✅ → **Simulate Tamper** → Verify ❌ → **Restore** → Verify ✅.

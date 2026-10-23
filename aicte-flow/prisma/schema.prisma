@@ -7,7 +7,8 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  // Hardcoded so a machine-wide DATABASE_URL (e.g. Postgres from another project) cannot override SQLite.
+  url      = "file:./dev.db"
 }
 
 model Region {
@@ -72,6 +73,8 @@ model Application {
   currentStageKey String
   status          String             @default("IN_PROGRESS") // IN_PROGRESS|RETURNED|COMPLETED|DECIDED
   assignedToId    String?
+  /// APH assistive metrics JSON: { studentIntake, facultyCount, professors, associates, assistants, labAreaSqm, requiredLabAreaSqm }
+  metricsJson     String?
   submittedAt     DateTime           @default(now())
   stageEnteredAt  DateTime           @default(now())
   createdAt       DateTime           @default(now())

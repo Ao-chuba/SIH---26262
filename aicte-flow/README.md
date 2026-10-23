@@ -9,6 +9,8 @@
 
 **AICTE Flow** is a unified digital platform where AICTE applications are routed automatically through the statutory approval stages (*Scrutiny, Re-Scrutiny, EVC Queue, EVC Inspection, EVC Report Review, SAC/SHC, Decision Pending*) in strict alignment with the AICTE Approval Process Handbook (APH).
 
+**§19 demo extras:** APH norms assistive card (faculty 1:20, intake multiples, cadre, lab area), dual-clock accountability bar, Admin audit tamper demo, Simulation Impact Summary on clock jumps, role accent stripe, document validity bars.
+
 At its core operates a **generic deadline & escalation engine** that unifies all time-bound regulatory operations:
 1. **Application stage timelines** (SLA per processing stage)
 2. **EVC inspection scheduling & completion** (tighter 30-day tracking for new institutions)
