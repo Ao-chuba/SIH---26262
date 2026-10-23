@@ -3,6 +3,18 @@ import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import Link from "next/link";
+import {
+  LayoutDashboard,
+  FileText,
+  Users,
+  ShieldCheck,
+  FolderOpen,
+  AlertTriangle,
+  Bell,
+  BarChart3,
+  History,
+  Settings,
+} from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -34,16 +46,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const navItems = [
-    { href: "/dashboard", icon: "[::]", label: "Dashboard", roles: ["all"] },
-    { href: "/applications", icon: "[#]", label: "Applications", roles: ["all"] },
-    ...(!isInstitution ? [{ href: "/evc", icon: "[?]", label: "EVC Management", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "EVC_COMMITTEE", "ADMIN"] }] : []),
-    ...(!isInstitution ? [{ href: "/undertakings", icon: "[=]", label: "Undertakings", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] }] : [{ href: "/undertakings", icon: "[=]", label: "My Undertakings", roles: ["all"] }]),
-    { href: "/documents", icon: "[~]", label: "Documents", roles: ["all"] },
-    { href: "/escalations", icon: "[!]", label: "Escalations", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] },
-    { href: "/notifications", icon: "[*]", label: "Notifications", roles: ["all"] },
-    { href: "/reports", icon: "[^]", label: "Reports", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] },
-    { href: "/audit", icon: "[%]", label: "Audit Trail", roles: ["BUREAU_OFFICER", "ADMIN", "REGIONAL_OFFICER"] },
-    { href: "/admin", icon: "[+]", label: "Admin", roles: ["ADMIN"] },
+    { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", roles: ["all"] },
+    { href: "/applications", icon: FileText, label: "Applications", roles: ["all"] },
+    ...(!isInstitution ? [{ href: "/evc", icon: Users, label: "EVC Management", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "EVC_COMMITTEE", "ADMIN"] }] : []),
+    ...(!isInstitution ? [{ href: "/undertakings", icon: ShieldCheck, label: "Undertakings", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] }] : [{ href: "/undertakings", icon: ShieldCheck, label: "My Undertakings", roles: ["all"] }]),
+    { href: "/documents", icon: FolderOpen, label: "Documents", roles: ["all"] },
+    { href: "/escalations", icon: AlertTriangle, label: "Escalations", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] },
+    { href: "/notifications", icon: Bell, label: "Notifications", roles: ["all"] },
+    { href: "/reports", icon: BarChart3, label: "Reports", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] },
+    { href: "/audit", icon: History, label: "Audit Trail", roles: ["BUREAU_OFFICER", "ADMIN", "REGIONAL_OFFICER"] },
+    { href: "/admin", icon: Settings, label: "Admin", roles: ["ADMIN"] },
   ].filter((item) => item.roles.includes("all") || item.roles.includes(user.role));
 
   const roleAccent =
@@ -62,24 +74,34 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="role-accent-stripe" style={{ background: roleAccent }} />
       {/* Sidebar */}
       <aside className="sidebar">
-        <div className="sidebar-logo">
-          <h1>
-            AICTE Flow<span className="logo-dot" />
-          </h1>
-          <p>Approval & Compliance Platform</p>
+        <div className="sidebar-logo" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <img
+            src="/logo.png"
+            alt="AICTE Logo"
+            style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 8 }}
+          />
+          <div>
+            <h1>
+              AICTE Flow<span className="logo-dot" />
+            </h1>
+            <p>Approval & Compliance Platform</p>
+          </div>
         </div>
 
         <nav className="sidebar-nav">
           <div className="nav-section-label">// Navigation</div>
-          {navItems.map((item) => (
-            <Link key={item.href} href={item.href} className="nav-item">
-              <span className="nav-ascii">{item.icon}</span>
-              <span>{item.label}</span>
-              {item.href === "/notifications" && unreadCount > 0 && (
-                <span className="badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
-              )}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link key={item.href} href={item.href} className="nav-item">
+                <Icon size={17} strokeWidth={2.2} style={{ flexShrink: 0, opacity: 0.85 }} />
+                <span>{item.label}</span>
+                {item.href === "/notifications" && unreadCount > 0 && (
+                  <span className="badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="sidebar-user">
@@ -136,7 +158,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
 
         <Link href="/notifications" className="notif-bell" title="Alerts & Delivery Log">
-          <span>[*] Alerts</span>
+          <Bell size={14} strokeWidth={2.2} />
+          <span>Alerts</span>
           {unreadCount > 0 && <span className="notif-count">{unreadCount > 9 ? "9+" : unreadCount}</span>}
         </Link>
       </header>
@@ -145,11 +168,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="main">
         {children}
       </main>
-
-      {/* Safeguards banner */}
-      <div className="safeguards-banner">
-        [!] STATUTORY NOTICE: Automated alerts and workflow actions support the approval process. They do not replace statutory scrutiny, verification, inspection or decisions of the competent authority.
-      </div>
     </div>
   );
 }
