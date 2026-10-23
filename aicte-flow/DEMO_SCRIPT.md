@@ -99,3 +99,14 @@
    - *"Notice the persistent banner at the bottom of the screen: Automation assists and expedites the workflow, but statutory human oversight is preserved at every step."*
    - *"The system never makes automated decisions on approval or rejection—those remain strictly in the hands of the competent authority."*
    - *"AICTE Flow brings transparency, accountability, and proactive compliance to higher education governance."*
+
+---
+
+## Planned demo beats (after root `README.md` §19 ships)
+
+> Do not present these until the features exist. Then fold them into the acts above and remove this stub.
+
+1. **APH Norms card** (Scrutiny / app detail): show pass/fail for 1:20 ratio, intake multiple, cadre — *"assists the officer; does not decide."*
+2. **Dual-Clock bar** after return → reply: officer processing days vs institution deficiency delay.
+3. **Clock +7 / +30**: open Simulation Impact Summary (reminders / overdue / escalations with deep links), then Delivery Log.
+4. **Audit**: Verify ✅ → Simulate Tamper → Verify ❌ at seq N → Restore → Verify ✅.
