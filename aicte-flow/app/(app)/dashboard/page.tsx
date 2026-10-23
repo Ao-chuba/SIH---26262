@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { differenceInCalendarDays } from "date-fns";
 import { getNow } from "@/lib/clock";
+import { computeHealthScore } from "@/lib/aph";
 import Link from "next/link";
 
 function SlaChip({ days, escalationLevel }: { days: number; escalationLevel?: number }) {
@@ -21,7 +22,7 @@ export default async function DashboardPage() {
   const now = await getNow();
 
   if (user.role === "REGIONAL_OFFICER") {
-    const [pending, myApps, evcCount, overdueUt, expiringDocs, escalated] = await Promise.all([
+    const [pending, myApps, evcCount, overdueUt, expiringDocs, escalated, regionInsts] = await Promise.all([
       prisma.application.count({ where: { regionId: user.regionId!, status: "IN_PROGRESS" } }),
       prisma.application.findMany({
         where: { regionId: user.regionId!, status: { in: ["IN_PROGRESS", "RETURNED"] } },
@@ -33,7 +34,28 @@ export default async function DashboardPage() {
       prisma.undertaking.count({ where: { status: "OVERDUE", institution: { regionId: user.regionId! } } }),
       prisma.instDocument.count({ where: { status: { in: ["EXPIRING", "EXPIRED"] }, institution: { regionId: user.regionId! } } }),
       prisma.deadlineItem.count({ where: { regionId: user.regionId!, escalationLevel: { gt: 0 }, state: "OPEN" } }),
+      prisma.institution.findMany({
+        where: { regionId: user.regionId! },
+        take: 8,
+        include: {
+          applications: { orderBy: { createdAt: "desc" }, take: 1, select: { metricsJson: true } },
+          documents: { select: { status: true, validUntil: true } },
+          undertakings: { select: { status: true } },
+        },
+      }),
     ]);
+    const regionHealth = regionInsts
+      .map((inst) => ({
+        id: inst.id,
+        name: inst.name,
+        health: computeHealthScore({
+          metricsJson: inst.applications[0]?.metricsJson ?? null,
+          docs: inst.documents,
+          undertakings: inst.undertakings,
+          now,
+        }),
+      }))
+      .sort((a, b) => a.health.score - b.health.score);
 
     const dueSoon = myApps.filter((a) => {
       const dl = a.deadlineItems[0];
@@ -65,6 +87,28 @@ export default async function DashboardPage() {
           <div className="kpi-card red"><div className="kpi-label">Overdue Undertakings</div><div className="kpi-value" style={{ color: "#ef4444" }}>{overdueUt}</div><div className="kpi-sub">Awaiting verification</div></div>
           <div className="kpi-card amber"><div className="kpi-label">Expiring Docs</div><div className="kpi-value" style={{ color: "#f59e0b" }}>{expiringDocs}</div><div className="kpi-sub">Within 90 days</div></div>
         </div>
+
+        {regionHealth.length > 0 && (
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div className="card-header">
+              <span className="card-title">Institution Compliance Health (region)</span>
+              <span style={{ fontSize: 11, color: "#64748b" }}>Assistive 0–100 · lowest first</span>
+            </div>
+            <div style={{ display: "grid", gap: 8 }}>
+              {regionHealth.map((row) => (
+                <div key={row.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #f0f4f8" }}>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{row.name}</span>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{row.health.score}</span>
+                    <span className={`badge ${row.health.label === "HEALTHY" ? "badge-green" : row.health.label === "AT RISK" ? "badge-amber" : "badge-red"}`}>
+                      {row.health.label}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="card">
           <div className="card-header">
@@ -208,6 +252,14 @@ export default async function DashboardPage() {
       include: { deadlineItems: { where: { state: "OPEN" }, orderBy: { dueAt: "asc" }, take: 1 } },
       orderBy: { createdAt: "desc" },
     });
+    const allUt = await prisma.undertaking.findMany({
+      where: { institutionId: user.institutionId! },
+      select: { status: true },
+    });
+    const allDocs = await prisma.instDocument.findMany({
+      where: { institutionId: user.institutionId! },
+      select: { status: true, validUntil: true },
+    });
     const myUt = await prisma.undertaking.findMany({
       where: { institutionId: user.institutionId!, status: { in: ["PENDING", "OVERDUE"] } },
       orderBy: { dueDate: "asc" },
@@ -218,6 +270,15 @@ export default async function DashboardPage() {
       orderBy: { validUntil: "asc" },
       take: 5,
     });
+    const latestMetrics = myApps.find((a) => a.metricsJson)?.metricsJson ?? null;
+    const health = computeHealthScore({
+      metricsJson: latestMetrics,
+      docs: allDocs,
+      undertakings: allUt,
+      now,
+    });
+    const healthColor =
+      health.label === "HEALTHY" ? "#16a34a" : health.label === "AT RISK" ? "#d97706" : "#dc2626";
 
     return (
       <div>
@@ -227,6 +288,39 @@ export default async function DashboardPage() {
             <p className="page-subtitle">{user.institution?.name}</p>
           </div>
           <Link href="/applications/new" className="btn btn-primary">+ New Application</Link>
+        </div>
+
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+            <div>
+              <div className="card-title" style={{ marginBottom: 4 }}>Compliance Health Score</div>
+              <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
+                Year-round assistive score from latest APH metrics, document validity, and undertakings — not a statutory grade.
+              </p>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 36, fontWeight: 800, color: healthColor, fontFamily: "var(--font-mono)", lineHeight: 1 }}>
+                {health.score}
+              </div>
+              <span className={`badge ${health.label === "HEALTHY" ? "badge-green" : health.label === "AT RISK" ? "badge-amber" : "badge-red"}`}>
+                {health.label}
+              </span>
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 16 }}>
+            <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: "#64748b" }}>APH norms</div>
+              <div style={{ fontWeight: 700, fontSize: 18 }}>{health.aphScore}/100</div>
+            </div>
+            <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: "#64748b" }}>Documents</div>
+              <div style={{ fontWeight: 700, fontSize: 18 }}>{health.docsScore}/100</div>
+            </div>
+            <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: "#64748b" }}>Undertakings</div>
+              <div style={{ fontWeight: 700, fontSize: 18 }}>{health.undertakingsScore}/100</div>
+            </div>
+          </div>
         </div>
 
         <div className="kpi-grid">

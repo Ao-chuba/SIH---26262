@@ -15,7 +15,17 @@ export type AphCheck = {
   label: string;
   detail: string;
   pass: boolean;
+  /** Illustrative APH handbook clause reference for demo */
+  clause: string;
 };
+
+export function isValidIntake(intake: number): boolean {
+  return (
+    Number.isInteger(intake) &&
+    intake > 0 &&
+    APH_NORMS.intakeMultiples.some((m) => intake % m === 0)
+  );
+}
 
 export function parseMetrics(json: string | null | undefined): AphMetrics | null {
   if (!json) return null;
@@ -43,11 +53,9 @@ export function requiredFaculty(intake: number): number {
 
 /** Build demo/default metrics. Set `compliant` false to seed a deficiency case. */
 export function buildMetrics(intake: number, compliant = true): AphMetrics {
-  const safeIntake =
-    APH_NORMS.intakeMultiples.includes(intake) || intake % 30 === 0 ? intake : 60;
+  const safeIntake = isValidIntake(intake) ? intake : 60;
   const req = requiredFaculty(safeIntake);
   const facultyCount = compliant ? Math.max(req, Math.ceil(req * 1.1)) : Math.max(1, req - 2);
-  // Scale cadre roughly 1:2:6 of faculty units
   const units = Math.max(1, Math.floor(facultyCount / 9));
   const professors = compliant ? units * APH_NORMS.cadreProfessor : 0;
   const associates = compliant ? units * APH_NORMS.cadreAssociate : Math.max(0, units);
@@ -58,7 +66,7 @@ export function buildMetrics(intake: number, compliant = true): AphMetrics {
     : Math.max(50, requiredLabAreaSqm - 80);
 
   return {
-    studentIntake: compliant ? safeIntake : intake % 30 === 0 ? intake : 73,
+    studentIntake: compliant ? safeIntake : isValidIntake(intake) ? intake : 73,
     facultyCount,
     professors,
     associates,
@@ -71,12 +79,7 @@ export function buildMetrics(intake: number, compliant = true): AphMetrics {
 export function evaluateAph(metrics: AphMetrics): AphCheck[] {
   const reqFac = requiredFaculty(metrics.studentIntake);
   const ratioOk = metrics.facultyCount >= reqFac;
-  const intakeOk =
-    metrics.studentIntake > 0 &&
-    APH_NORMS.intakeMultiples.some((m) => metrics.studentIntake % m === 0);
-  const cadreTotal =
-    metrics.professors * 1 + metrics.associates * 1 + metrics.assistants * 1;
-  // Cadre 1:2:6 — check proportions when we have at least one professor unit
+  const intakeOk = isValidIntake(metrics.studentIntake);
   const cadreOk =
     metrics.professors >= 1 &&
     metrics.associates >= metrics.professors * APH_NORMS.cadreAssociate &&
@@ -89,24 +92,94 @@ export function evaluateAph(metrics: AphMetrics): AphCheck[] {
       label: "Faculty–Student Ratio",
       detail: `${metrics.facultyCount} faculty for ${metrics.studentIntake} intake (need ≥ ${reqFac} at 1:${APH_NORMS.facultyStudentRatio})`,
       pass: ratioOk,
+      clause: "APH Norms Ch.7 — Faculty:Student ≥ 1:20 (UG Engg / MBA-style)",
     },
     {
       key: "intake",
       label: "Intake Multiple",
       detail: `${metrics.studentIntake} seats (must be multiple of ${APH_NORMS.intakeMultiples.join(" / ")})`,
       pass: intakeOk,
+      clause: "APH Norms Ch.3 — Intake in divisions of 30 / 60",
     },
     {
       key: "cadre",
       label: "Cadre Ratio (1:2:6)",
-      detail: `Prof ${metrics.professors} : Assoc ${metrics.associates} : Asst ${metrics.assistants}${cadreTotal === 0 ? " (no cadre data)" : ""}`,
+      detail: `Prof ${metrics.professors} : Assoc ${metrics.associates} : Asst ${metrics.assistants}`,
       pass: cadreOk,
+      clause: "APH Norms Ch.7 — Cadre 1 Professor : 2 Associate : 6 Assistant",
     },
     {
       key: "lab",
       label: "Lab Built-up Area",
       detail: `${metrics.labAreaSqm} sq.m vs required ${metrics.requiredLabAreaSqm} sq.m (illustrative)`,
       pass: labOk,
+      clause: "APH Infrastructure norms — lab built-up vs intake (demo heuristic)",
     },
   ];
+}
+
+/** 0–100 score from APH checks (equal weight). */
+export function aphScore(metrics: AphMetrics | null): number {
+  if (!metrics) return 0;
+  const checks = evaluateAph(metrics);
+  const pass = checks.filter((c) => c.pass).length;
+  return Math.round((pass / checks.length) * 100);
+}
+
+/** Draft deficiency observation text from failed APH checks (assistive; officer edits before save). */
+export function formatAphDeficiencies(metrics: AphMetrics | null): string {
+  if (!metrics) return "";
+  const fails = evaluateAph(metrics).filter((c) => !c.pass);
+  if (fails.length === 0) return "";
+  return fails
+    .map((c) => `[DEFICIENCY] ${c.label}: ${c.detail}\n  Ref: ${c.clause}`)
+    .join("\n\n");
+}
+
+export type HealthBreakdown = {
+  score: number;
+  aphScore: number;
+  docsScore: number;
+  undertakingsScore: number;
+  label: "CRITICAL" | "AT RISK" | "HEALTHY";
+};
+
+/**
+ * Institution year-round compliance health: APH metrics (latest app) +
+ * document validity + undertaking status. Assistive only.
+ */
+export function computeHealthScore(input: {
+  metricsJson?: string | null;
+  docs: { status: string; validUntil: Date }[];
+  undertakings: { status: string }[];
+  now: Date;
+}): HealthBreakdown {
+  const metrics = parseMetrics(input.metricsJson ?? null);
+  const aScore = aphScore(metrics);
+
+  let docsScore = 100;
+  if (input.docs.length === 0) {
+    docsScore = 70;
+  } else {
+    const weights: number[] = input.docs.map((d) => {
+      if (d.status === "EXPIRED" || d.validUntil < input.now) return 0;
+      if (d.status === "EXPIRING" || d.status === "RENEWAL_SUBMITTED") return 50;
+      return 100;
+    });
+    docsScore = Math.round(weights.reduce((a, b) => a + b, 0) / weights.length);
+  }
+
+  let undertakingsScore = 100;
+  if (input.undertakings.length > 0) {
+    const weights: number[] = input.undertakings.map((u) => {
+      if (u.status === "OVERDUE" || u.status === "REJECTED") return 0;
+      if (u.status === "PENDING" || u.status === "SUBMITTED") return 60;
+      return 100;
+    });
+    undertakingsScore = Math.round(weights.reduce((a, b) => a + b, 0) / weights.length);
+  }
+
+  const score = Math.round(aScore * 0.45 + docsScore * 0.35 + undertakingsScore * 0.2);
+  const label = score < 50 ? "CRITICAL" : score < 75 ? "AT RISK" : "HEALTHY";
+  return { score, aphScore: aScore, docsScore, undertakingsScore, label };
 }

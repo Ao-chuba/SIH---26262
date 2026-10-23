@@ -80,6 +80,34 @@ Judges will ask where numbers come from. We keep a hard split:
 
 ---
 
+## 3.3 Problem Statement line-by-line completeness (SIH-26262)
+
+| PS theme | Status | Where it lives |
+|---|---|---|
+| Adaptive application routing (scrutiny / EVC / SAC-SHC) | Done | `ROUTES` + `APP_TYPE_ROUTE_MAP` + **Refer to SAC/SHC** (`referToSacShc`) |
+| Stage timelines + reminders + escalation | Done | `DeadlineItem` + `tick()` + alert rules |
+| Deficiency return + institution response window | Done | `returnApplication` + dual-clock |
+| APH / compliance monitoring (assistive) | Done | Intake hard-block, APH clause cards, score, deficiency prefill |
+| Year-round docs / undertakings | Done | Document expiry + undertaking deadlines + **Compliance Health Score** |
+| Human-in-the-loop decisions (no auto approve/reject) | Done | `DECISION_PENDING` + decide API + UI warning |
+| Audit / accountability | Done | SHA-256 chain + tamper demo + dual-clock |
+| Alerts (in-app / email / SMS simulation) | Done | `Notification` + delivery log |
+| Configurable operational SLAs | Done | Admin `RuleConfig` editor |
+| PPT / pitch deck | Out of scope here | Team prepares separately |
+
+### Distinction vs public competitor demos
+
+| Factor | Typical shallow demos | AICTE Flow |
+|---|---|---|
+| Intake / APH gate | Soft or missing | **Hard-block** invalid intake (e.g. 73) + live faculty preview |
+| Delay blame | Single SLA chip | **Dual-clock** officer vs institution days |
+| Hearing path | Static flowchart only | Live **Refer to SAC/SHC** adaptive route change |
+| Compliance | Checklist screenshot | Clause-labelled APH card + institution **health score 0–100** |
+| Integrity | “Audit log” table | Hash chain + **simulate tamper** |
+| Automation proof | Claims only | Simulated clock + tick impact summary |
+
+---
+
 ## 4. Production Roadmap & Future Integrations
 
 If transitioning this prototype into AICTE's national production ecosystem:
