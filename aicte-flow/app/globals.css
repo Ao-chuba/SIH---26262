@@ -350,7 +350,7 @@ code, pre, .font-mono, .sla-chip, .badge, .mono-label {
 .main {
   margin-left: 240px;
   margin-top: 60px;
-  padding: 32px 36px 90px;
+  padding: 32px 36px 40px;
   min-height: calc(100vh - 60px);
 }
 
@@ -725,24 +725,6 @@ code, pre, .font-mono, .sla-chip, .badge, .mono-label {
   margin-top: 2px;
 }
 
-/* Safeguards Banner (HeyFriends! Pill Notice) */
-.safeguards-banner {
-  background: #FFFBEA;
-  border: 1.5px solid #F59E0B;
-  border-radius: 12px;
-  padding: 10px 20px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #78350F;
-  text-align: center;
-  position: fixed;
-  bottom: 12px;
-  left: 254px;
-  right: 14px;
-  z-index: 80;
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
-}
-
 /* Stage Tracker / Stepper */
 .stage-tracker {
   display: flex;
@@ -919,5 +901,4 @@ code, pre, .font-mono, .sla-chip, .badge, .mono-label {
   .sidebar { transform: translateX(-100%); }
   .main { margin-left: 0; padding: 20px; }
   .topbar { left: 0; }
-  .safeguards-banner { left: 14px; }
 }

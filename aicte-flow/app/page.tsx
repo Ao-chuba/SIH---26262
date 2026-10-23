@@ -38,14 +38,14 @@ export default async function LoginPage() {
       asciiTag: "[EVC]",
       label: "EVC Committee",
       desc: "Manage Expert Visit Committee inspections, schedule visits & upload inspection reports",
-      badgeColor: "var(--accent-sage)",
+      badgeColor: "var(--highlighter-yellow)",
     },
     {
       role: "ADMIN",
       asciiTag: "[ADMIN]",
       label: "System Admin",
       desc: "Simulated time engine, dynamic SLA rules, user directory & cryptographic audit ledger",
-      badgeColor: "var(--accent-peach)",
+      badgeColor: "var(--accent-blue)",
     },
   ];
 
@@ -72,37 +72,21 @@ export default async function LoginPage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span
+          <img
+            src="/logo.png"
+            alt="AICTE Logo"
             style={{
-              fontFamily: "var(--font-mono)",
-              fontWeight: 800,
-              fontSize: 16,
-              background: "var(--forest)",
-              color: "var(--highlighter-yellow)",
-              padding: "4px 10px",
-              borderRadius: "9999px",
-              letterSpacing: "0.05em",
+              width: 36,
+              height: 36,
+              objectFit: "contain",
+              borderRadius: 8,
             }}
-          >
-            [::]
-          </span>
+          />
+
           <span style={{ fontSize: 22, fontWeight: 900, color: "var(--forest)", letterSpacing: "-0.03em" }}>
-            AICTE Flow<span style={{ color: "var(--accent-blue)" }}>!</span>
+            AICTE Flow<span style={{ color: "var(--accent-blue)" }}></span>
           </span>
-          <span
-            style={{
-              fontSize: 11,
-              fontFamily: "var(--font-mono)",
-              background: "var(--accent-blue)",
-              color: "var(--forest)",
-              padding: "3px 10px",
-              borderRadius: "9999px",
-              fontWeight: 700,
-              letterSpacing: "0.04em",
-            }}
-          >
-            e-Governance
-          </span>
+
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -112,7 +96,7 @@ export default async function LoginPage() {
           <span
             style={{
               padding: "6px 16px",
-              background: "var(--bg-subtle)",
+              background: "var(--highlighter-yellow)",
               border: "1.5px solid var(--border)",
               color: "var(--forest)",
               borderRadius: "9999px",
@@ -206,7 +190,7 @@ export default async function LoginPage() {
             <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--forest)", margin: 0 }}>
               Select a Role to Enter Portal
             </h2>
-            <span style={{ fontSize: 12, color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
+            <span style={{ fontSize: 12, color: "var(--muted)", backgroundColor: "var(--highlighter-yellow)", fontFamily: "var(--font-mono)" }}>
               [SELECT ROLE]
             </span>
           </div>
@@ -381,35 +365,6 @@ export default async function LoginPage() {
               Launch Session -&gt;
             </button>
           </form>
-        </div>
-
-        {/* Official Statutory Notice Footer */}
-        <div
-          style={{
-            padding: "16px 22px",
-            background: "var(--card-bg)",
-            borderRadius: 14,
-            border: "1.5px solid var(--border)",
-            fontSize: 12,
-            color: "var(--muted)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 16,
-            flexWrap: "wrap",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: "var(--forest)" }}>
-              [NOTICE]
-            </span>
-            <span>
-              All approval workflows, stage SLAs, and inspections are administered pursuant to AICTE Approval Process Handbook (APH) statutory regulations.
-            </span>
-          </div>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted)" }}>
-            All India Council for Technical Education • New Delhi
-          </span>
         </div>
       </main>
     </div>
