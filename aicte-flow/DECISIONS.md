@@ -69,14 +69,29 @@ Judges will ask where numbers come from. We keep a hard split:
 
 ---
 
-## 3.2 Known prototype gaps → next build (see root `README.md` §19)
+## 3.2 §19 gaps — shipped
 
-| Gap vs official PS / demo strength | Planned fix |
+| Gap | Status |
 |---|---|
-| Quantitative APH compliance monitoring thin | Application `metricsJson` + APH Norms card |
-| Blame / delay accountability unclear | Dual-clock bar (officer vs institution days) |
-| Audit verify feels static | Admin Simulate Tamper + Restore |
-| UI differentiation vs weak public demos | Richer stepper, validity bars, simulation summary, role accents |
+| APH norms card / `metricsJson` | Shipped |
+| Dual-clock bar | Shipped |
+| Audit Simulate Tamper / Restore | Shipped |
+| Simulation impact summary, validity bars, role accents | Shipped |
+| Jury launchpad + hardened DEMO_SCRIPT | Shipped (jury-readiness) |
+
+---
+
+## 3.3 Judge Q&A cheat sheet
+
+| Question | Answer |
+|---|---|
+| Are the 15-day scrutiny / T-30 reminders official? | **No.** Operational SLAs are illustrative placeholders in Admin → Rules, labelled “configure per APH / academic calendar.” Change live without code. |
+| Is 1:20 / 1:2:6 / intake 30–60 official? | **APH-aligned norms** shown as assistive pass/fail. They do **not** auto-approve or auto-reject. |
+| Does the system approve colleges automatically? | **Never.** Flow stops at `DECISION_PENDING`. Only a human `BUREAU_OFFICER` records `DECIDED` with remarks. Uploads need officer verify. |
+| How do you prove alerts work in 5 minutes? | Admin **simulated clock** (+7 / +30) runs `tick()` and shows **Simulation Impact Summary** + Delivery Log. |
+| How do you prove the audit is tamper-evident? | SHA-256 hash chain + **Verify** / **Simulate Tamper** / **Restore** on `/audit`. |
+| Why SQLite? | Zero-setup demo reproducibility. Production roadmap: Postgres + Gov SSO + real SMS/email gateways (see §4). |
+| Sister PS SIH26261? | 26261 = document authenticity AI. **26262** = routing, year-round compliance timers, escalations after submission. |
 
 ---
 

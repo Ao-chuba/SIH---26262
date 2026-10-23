@@ -1,115 +1,67 @@
-# 🎙️ Live Demo Script (5-Minute Walkthrough)
+# Live Demo Script (5-Minute Walkthrough)
 
-> **Platform:** AICTE Flow  
-> **Problem Statement ID:** 26262  
-> **Target Audience:** Hackathon Jury, AICTE Evaluators & Technical Reviewers
-
----
-
-## ⏱️ Step-by-Step Walkthrough (5 Minutes Total)
-
-### Act 1: The Core Innovation (0:00 – 0:30)
-1. **Open the Homepage (`/`):**
-   - *"Welcome to AICTE Flow. AICTE processes tens of thousands of institutional applications every year across Scrutiny, Expert Visit Committees (EVC), and Standing Appeal Committees (SAC)."*
-   - *"Our central architectural breakthrough is the **Generic Deadline & Escalation Engine**. Rather than siloed tracking, we unified stage pendency, EVC inspection deadlines, conditional undertakings, and lease document validity under ONE generic state machine."*
-   - Show the role selector card and click **"Institution"**.
+> **Platform:** AICTE Flow · **PS:** SIH26262  
+> **Prep:** `cd aicte-flow && npm run seed && npm run dev` → http://localhost:3000
 
 ---
 
-### Act 2: New Application & Automated Routing (0:30 – 1:30)
-1. **Institution Dashboard (`/dashboard`):**
-   - Note the clean, institutional view showing *My Applications* and *Pending Actions*.
-   - Click **"+ New Application"** (`/applications/new`).
-2. **Submit Application:**
-   - Select **"New Course / Additional Specialisation"** (Program: Engineering, Intake: 60).
-   - Point to the **Workflow Route Preview**:
-     *`Scrutiny → EVC Queue → EVC Scheduled → EVC Report → Decision Pending`*
-   - Click **"Submit Application"**.
-3. **Application Detail Page (`/applications/[id]`):**
-   - Highlight the **Route Stepper** showing stage 1: *Scrutiny* (with a 🟢 15-day SLA chip).
-   - Show that the system automatically assigned a Regional Officer from the institution's region.
+## Cold start (30s before judges)
+
+1. Fresh terminal: `npm run seed` then `npm run dev`.
+2. Prefer accounts: `ro.central.alpha@demo.aicte` (Regional) and `admin@demo.aicte`.
+3. Golden case: **DEMO-NEW-INST-001** (seeded with APH fails + return history). Dashboard shows **[JURY] Golden demo applications**.
 
 ---
 
-### Act 3: Scrutiny, Deficiency Return & EVC Auto-Hooks (1:30 – 2:30)
-1. **Switch Role to Regional Officer:**
-   - Using the topbar **"Switch user"** dropdown, select `[REGIONAL] Regional Officer (Alpha)`.
-   - The Regional Officer dashboard displays KPI cards (My Pending, Due ≤3d, Overdue, Awaiting Verification).
-2. **Return with Deficiency:**
-   - Open the application. In the action panel, click **"Return Application"**.
-   - Enter deficiency reason: *"Building fire safety NOC certificate is missing seal of municipal authority."* (Notice that reasons < 10 characters are strictly rejected).
-   - Status transitions to `RETURNED`. The institution is given a 7-day cure window deadline.
-3. **Institution Responds & Auto Re-Scrutiny:**
-   - Switch back to `Institution`.
-   - In the action panel, click **"Reply to Return"**, enter: *"Attached verified municipal fire NOC with requisite stamp."*
-   - Click Submit. **Watch the automation in action:** The application immediately transitions into `RE_SCRUTINY`!
-4. **Advance to EVC Queue:**
-   - Switch to `Regional Officer`, click **"Advance to Next Stage"**.
-   - Because the route is `SCRUTINY_EVC`, the system **automatically enqueues the application for an EVC visit** and opens an `EVC_SCHEDULING` deadline.
+## Act 1 — One engine (0:00–0:40)
+
+1. Open `/`. Read the yellow **[JURY PATH]** card aloud in one sentence.
+2. Click **Regional Officer** (lands on Central RO).
+3. Say: *"Stage SLAs, EVC timing, undertakings, and lease expiry are one `DeadlineItem` engine with one `tick()`."*
 
 ---
 
-### Act 4: Fast-Forward Time — Engine Tick & Escalations (2:30 – 3:30)
-*(The Showstopper Demo Moment)*
+## Act 2 — APH + dual-clock (0:40–2:00)
 
-1. **Switch to System Admin (`admin@demo.aicte`):**
-   - Navigate to `/admin`.
-   - Note the **Simulated Clock Control**. Currently running on real time.
-2. **Fast-Forward +7 Days:**
-   - Click **"+7 Days"**.
-   - A real-time toast pops up from the engine tick:
-     `⚡ Deadline Engine Tick Executed: Reminders Fired: 14 | Overdue Marked: 8 | Escalations Raised: 4`
-   - The top navigation bar now proudly displays the orange badge:
-     `🕒 Simulated: 30 Oct 2026`
-3. **Fast-Forward +30 Days:**
-   - Click **"+30 Days"**.
-   - T-minus reminders fire, SLA chips flip to **🔴 Overdue**, and deadline items climb the escalation ladder.
-4. **Observe the Ripple Effect:**
-   - Navigate to **Escalations** (`/escalations`): Show L1, L2, and L3 escalations with the responsible officer names.
-   - Navigate to **Notifications** (`/notifications`): Show the **"Delivery Log"** tab displaying simulated SMS and Email alerts with exact dispatch timestamps.
+1. On dashboard, click **DEMO-NEW-INST-001**.
+2. **APH Norms Compliance Check:** show pass/fail (intentional fails on this golden case).  
+   Line: *"Assists scrutiny. Never auto-approves."*
+3. **Dual-Clock Accountability:** officer days vs institution deficiency days after the seeded return.
+4. Point at the route stepper subtitles (Scrutiny = document & APH verification; EVC = campus inspection).
 
 ---
 
-### Act 5: Conditional Undertakings & Document Expiry Surveillance (3:30 – 4:15)
-1. **Undertakings Compliance (`/undertakings`):**
-   - Explain how approvals granted with conditional undertakings (e.g., *"Recruit qualified Ph.D. professor in AI before start of academic semester"*) are tracked with statutory deadlines.
-   - As `Institution`, click **"Upload Evidence"** on an open undertaking and attach the compliance proof. The status flips to `SUBMITTED`.
-   - Notice that upload alone does **NOT** satisfy the deadline!
-   - Switch to `Regional Officer` and click **"✓ Verify"**. Now the deadline item is satisfied and closed.
-2. **Document & Lease Expiry (`/documents`):**
-   - View the institutional lease deeds categorized into 90-day, 60-day, 30-day, and Expired buckets.
-   - Show the **"Submit Renewal"** workflow for expiring leases.
+## Act 3 — Time travel + alerts (2:00–3:30)
+
+1. Switch user → **System Admin** (`admin@demo.aicte`) → `/admin`.
+2. Click **+7 Days**, then **+30 Days** if time allows.
+3. Show **Simulation Impact Summary** (reminders / overdue / escalations) with deep links.
+4. Open `/notifications` → **Delivery Log** (simulated EMAIL/SMS). Optional: `/escalations`.
 
 ---
 
-### Act 6: Reports & Cryptographic Audit Verification (4:15 – 4:45)
-1. **Analytical Reports (`/reports`):**
-   - Show the 6 core reports: *Application Pendency, EVC Status, Undertaking Compliance, Document Validity, Overdue Cases, Region Performance*.
-   - Click **"Export CSV"** to demonstrate instant tabular export.
-2. **Tamper-Evident Audit Trail (`/audit`):**
-   - Explain that every workflow transition, stage move, deficiency return, and clock tick is cryptographically chained with SHA-256 hashes (`hash = sha256(prevHash + ts + actor + action + entity + payload)`).
-   - Click **"🛡️ Verify Chain Integrity"**.
-   - The system re-hashes all historical ledger entries sequentially and displays:
-     `✅ Hash Chain Verification Passed: All cryptographic hashes in the ledger are verified and intact from sequence #1.`
+## Act 4 — Audit tamper (3:30–4:30)
+
+1. `/audit` → **Verify Chain Integrity** → pass.
+2. **Simulate Tamper** → Verify → fail at seq N.
+3. **Restore** → Verify → pass.
+4. Optional: `/reports` → Export CSV on one card.
 
 ---
 
-### Act 7: Regulatory Safeguards & Closing (4:45 – 5:00)
-1. **Closing Summary:**
-   - *"Notice the persistent banner at the bottom of the screen: Automation assists and expedites the workflow, but statutory human oversight is preserved at every step."*
-   - *"The system never makes automated decisions on approval or rejection—those remain strictly in the hands of the competent authority."*
-   - *"AICTE Flow brings transparency, accountability, and proactive compliance to higher education governance."*
+## Act 5 — Close (4:30–5:00)
+
+1. Footer banner: automation supports; does not replace competent authority.
+2. One line: *"Applications stop at Decision Pending — only a human bureau officer records DECIDED."*
+3. Offer optional live create-app flow only if judges ask (Institution → New Application → RO return → reply).
 
 ---
 
-## Act add-ons (§19 + PS-gap distinction — ship with the live demo)
+## Backup lines if something glitches
 
-*Beat shallow competitor demos (intake gate, dual-clock, hearing path, health, tamper proof).*
-
-1. **Intake hard-block (source gate)** — Institution → `/applications/new`, type intake **73**. Show live **[BLOCKED]** banner; submit disabled. Change to **60** → gate passes. Say: *"Clean input at source — zero wasted RO cycles."*
-2. **Compliance Health Score** — Institution dashboard: show **0–100** score (APH + docs + undertakings). RO dashboard: region list, lowest first.
-3. **APH Norms card + deficiency prefill** — Open a deficient app: clause labels + score; click **[APH] Prefill Deficiencies** → edit → save. Say: *"assists the officer; does not decide."*
-4. **Dual-Clock bar** — Same app: officer processing days vs institution deficiency delay after a return.
-5. **Refer to SAC/SHC** — As RO on Scrutiny/EVC Report: **Refer to SAC/SHC** with reason → route stepper gains hearing stage; audit `REFERRED_SAC_SHC`.
-6. **Clock +7 / +30** (Admin): **Simulation Impact Summary** → Notifications / Escalations / Delivery Log.
-7. **Audit** (Admin): Verify → **Simulate Tamper** → Verify fails → **Restore** → Verify passes.
+| Glitch | Recovery |
+|---|---|
+| Empty dashboards | Re-run `npm run seed` |
+| Wrong region RO | Switch user to `ro.central.alpha@demo.aicte` |
+| Clock did nothing | Stay on Admin; click **Run tick now** |
+| Tamper already active | Click **Restore** first |
