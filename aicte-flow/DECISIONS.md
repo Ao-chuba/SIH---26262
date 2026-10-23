@@ -7,9 +7,17 @@
 
 ## 1. Key Assumptions & Regulatory Baselines
 
-### 1.1 Illustrative SLA Timelines vs. Official APH
-- **Assumption:** In the prototype, stage timelines (e.g. Scrutiny 15 days, Re-Scrutiny 7 days, EVC Queue 5 days, EVC Scheduled 20 days, EVC Report 7 days, SAC/SHC 10 days, Decision Pending 10 days) and alert reminder offsets (`-30, -15, -7, -3, -1, 0` days) are **illustrative placeholders** derived from representative approval cycles.
-- **Design Decision:** These numbers are never hardcoded inside business logic. They are initialized into `RuleConfig` at seed time and made editable via the **Admin Control Center** (`/admin`). The UI prominently displays statutory guidance: *"Illustrative placeholder, configure in alignment with the official AICTE Approval Process Handbook (APH)"*.
+### 1.1 Two kinds of “rules” (official APH vs operational placeholders)
+
+Judges will ask where numbers come from. We keep a hard split:
+
+| Kind | Source | Examples | In product |
+|---|---|---|---|
+| **APH-style norms** | Approval Process Handbook themes (faculty–student ratio, cadre, intake divisions, infrastructure readiness) | ≥ **1:20** faculty:student (UG Engg / MBA-style demos); cadre **1:2:6**; intake in multiples of **30/60** | Assistive **pass/fail** cards on the application. Never auto-approve or auto-reject. Labelled as norms-aligned checks to support officer scrutiny. |
+| **Operational SLAs** | Academic calendar / RO practice — **not** hard-coded as immutable law in this prototype | Scrutiny **15** days, Re-Scrutiny **7**, reminder offsets T-30/T-7, escalation after N overdue days | Stored in `RuleConfig`, editable in **Admin**. Banner: *"Illustrative placeholder, configure in alignment with the official AICTE Approval Process Handbook (APH) / current academic calendar."* |
+
+- **Assumption:** Stage timelines and alert offsets in seed/`rules.ts` are placeholders for demo pacing.
+- **Design Decision:** Business logic reads timelines from config/DB, not magic numbers scattered in handlers. APH quantitative checks (when added) live as explicit norm constants + UI badges, separate from the deadline engine.
 
 ### 1.2 "Generic Deadline Engine" as the Architectural Core
 - **Assumption:** Stage pendency, EVC visit delays, conditional undertaking compliance, and land lease/document expirations share an identical operational model:
@@ -47,6 +55,28 @@
    - Automation is strictly limited to moving files between functional queues (e.g., when a scrutiny officer signs off on a deficiency-free application, the system automatically places it into the `EVC_QUEUE`).
 3. **Mandatory Deficiency Attribution:**
    - Any return or revert action enforces a mandatory reason (minimum 10 characters) stored in the permanent observation history and audit log.
+4. **Compliance badges are assistive only:**
+   - APH norms cards (ratio, intake, cadre, lab area) support scrutiny; they do **not** constitute a statutory decision or replace officer verification.
+
+---
+
+## 3.1 UI / demo direction (distinction)
+
+- **Light “GovTech” look** — crisp light backgrounds, deep navy primary, clear SLA colours. Avoid dark/neon/cyberpunk dashboards that read as generic hackathon UI.
+- **Self-explanatory stages** — show plain-English labels/subtitles (e.g. EVC = physical campus inspection), not raw route enums, on officer-facing screens.
+- **Demo-visible automation** — clock jump must surface a concrete impact summary (reminders / overdue / escalations), not only a disappearing toast.
+- **Role clarity** — persona/role switcher should make it obvious whose desk the judge is looking at (subtle accent / badge per role).
+
+---
+
+## 3.2 Known prototype gaps → next build (see root `README.md` §19)
+
+| Gap vs official PS / demo strength | Planned fix |
+|---|---|
+| Quantitative APH compliance monitoring thin | Application `metricsJson` + APH Norms card |
+| Blame / delay accountability unclear | Dual-clock bar (officer vs institution days) |
+| Audit verify feels static | Admin Simulate Tamper + Restore |
+| UI differentiation vs weak public demos | Richer stepper, validity bars, simulation summary, role accents |
 
 ---
 
