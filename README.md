@@ -495,6 +495,24 @@ aicte-flow/
 - Always show empty states and loading skeletons; never show raw JSON or stack traces to users.
 - Clock badge in the top bar whenever the simulated date is active, so nobody is confused during the demo.
 
+  HIGH-DISTINCTION UI/UX & GOVTECH DESIGN SYSTEM (CRITICAL FOR DEMO)
+1. Visual Theme ("Modern GovTech 2.0"):
+   - Strictly LIGHT MODE with a crisp `#F8FAFC` background, pure white `#FFFFFF` cards with subtle `#E2E8F0` borders and soft shadows. Never use dark/cyberpunk themes.
+   - Top thin header stripe in subtle Indian GovTech tricolor/saffron-navy gradient, paired with a deep Royal Navy (`#1E3A8A`) primary brand color.
+   - Distinct Role Persona Accents: Top persona banner changes subtle badge/accent tint per active role (Emerald for Institution, Royal Blue for Regional Officer, Purple for Bureau Officer, Amber for EVC Committee, Slate for Admin) so viewers immediately know whose screen they are looking at.
+2. Self-Explanatory Plain-English Subtitles:
+   - Never show raw enum strings like `SCRUTINY_EVC_SAC_SHC` to users. Always display human-friendly titles with micro-subtitles explaining AICTE jargon:
+     * `Scrutiny` -> "Document & APH Norm Verification"
+     * `EVC Visit` -> "Expert Visit Committee (Physical Campus Inspection)"
+     * `SAC / SHC` -> "Standing Appellate / Hearing Committee (Appeal Review)"
+     * `EoA` -> "Extension of Approval (Annual License Renewal)"
+3. Signature Visual Components (Must Build):
+   - `<RouteStepper />`: A horizontal Amazon/Domino's-style subway map on `/applications/[id]` showing completed stages (green check + days taken), active stage (pulsing blue ring + assigned officer name + SLA countdown), and upcoming stages.
+   - `<DualClockBar />`: A split horizontal progress bar comparing "AICTE Officer Processing Days" (Blue) vs "Institution Deficiency Delay Days" (Orange) for instant bottleneck accountability.
+   - `<AphNormsCard />`: A visual checklist card on `/applications/[id]` citing official AICTE APH 2024-27 rules: Faculty-Student Ratio (1:20 norm), Cadre Ratio (1:2:6), Intake Multiples (30/60 seats), and Built-up Lab Area, with instant Pass/Deficiency badges.
+   - `<ValidityProgressBar />`: Battery-style visual depletion bars on `/documents` and `/undertakings` showing remaining validity in Green (>60d), Amber (<=30d), or Red (Expired).
+   - `<SimulationSummaryModal />`: When clicking `+1d`, `+7d`, or `+30d` on the top-bar clock, display a rich visual summary card listing exact reminders fired, items turned overdue, and escalations triggered, with one-click links to inspect them.
+
 ---
 
 **START NOW with Phase 1. Do not wait for confirmation. Commit after every phase and keep the app runnable at all times.**
