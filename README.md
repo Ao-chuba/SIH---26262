@@ -497,4 +497,30 @@ aicte-flow/
 
 ---
 
-**START NOW with Phase 1. Do not wait for confirmation. Commit after every phase and keep the app runnable at all times.**
+## 19. NEXT BUILD — POST-PROTOTYPE ENHANCEMENTS (phases 1–9 already shipped in `aicte-flow/`)
+
+Phases 1–9 are done on `main`. Build the items below in order. Do not recreate the scaffold. Prefer editing existing pages/components. Keep `npm run dev` runnable after each item. Mark each checkbox done in this file when complete. Update `aicte-flow/DEMO_SCRIPT.md` and `aicte-flow/README.md` only after the related UI ships (do not claim unfinished features).
+
+### Rules honesty (judge Q&A)
+
+| Kind | Examples | How we treat them |
+|---|---|---|
+| APH-style norms (assistive checks) | Faculty–student ≥ 1:20; cadre 1:2:6; intake multiples of 30/60 | Encode as labelled norms on the application; pass/fail badges only — **never** auto-approve/reject |
+| Operational SLAs (placeholders) | Scrutiny 15d, reminders T-30/T-7, escalation ladders | Stay in `RuleConfig` / Admin editor; banner: illustrative, configure per current APH calendar |
+
+### Build checklist
+
+- [ ] **19.1 APH Compliance Snapshot** — Add `metricsJson` (String/JSON) on `Application`: `{ studentIntake, facultyCount, requiredFaculty, labAreaSqm, requiredLabAreaSqm, professors?, associates?, assistants? }`. Seed realistic values on golden demos + a sample of apps. On `/applications/[id]`, render **APH Norms Compliance Check** with pass/fail for ratio 1:20, intake multiple 30/60, cadre 1:2:6 (if counts present), lab area vs required. Label: assistive for scrutiny; not a statutory decision.
+- [ ] **19.2 Dual-Clock Accountability Bar** — From `ApplicationStage` (+ RETURNED institution windows), show on app detail header: **AICTE processing days** vs **Institution deficiency-response days**. Simple split bar + numbers.
+- [ ] **19.3 Audit Tamper Demo** — Admin-only on `/audit`: **Simulate Tamper** (mutate one `AuditLog.payload` without updating `hash`) so Verify shows ❌ Broken at seq N; **Restore** repairs it. Keep chain verify as today.
+- [ ] **19.4 UI distinction (light GovTech)** — Keep light mode (`#F8FAFC` / navy primary). Enrich existing stepper with plain-English stage subtitles (no raw enums). Battery-style validity bars on `/documents` (and undertakings countdown if easy). After clock +1/+7/+30, show a **Simulation Impact Summary** (reminders / overdue / escalations with links), not only a toast. Subtle role accent on persona/switcher so judges see whose screen it is.
+- [ ] **19.5 Docs sync** — Refresh `aicte-flow/DEMO_SCRIPT.md` demo beats for 19.1–19.4; light touch on `aicte-flow/README.md` feature list; tick checkboxes here.
+
+### Out of scope for this pass
+
+Live SMS/email gateways, real SSO, DigiLocker, PointNet/OCR-as-core, dark/neon themes, claiming official APH calendar day counts as fixed law.
+
+---
+
+**Phases 1–9:** already built — do not restart from Phase 1.  
+**Next:** implement Section 19 in order, commit meaningfully when asked.
