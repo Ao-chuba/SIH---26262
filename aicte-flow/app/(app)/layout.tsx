@@ -107,7 +107,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="sidebar-user">
           <div className="sidebar-user-title">Active Persona</div>
           <div className="sidebar-user-name">{user.name}</div>
-          <div className="sidebar-user-role">[{user.role.replace(/_/g, " ")}]</div>
+          <div
+            className="sidebar-user-role"
+            style={{
+              display: "inline-block",
+              backgroundColor: "var(--highlighter-yellow)",
+              color: "var(--forest)",
+              padding: "2px 8px",
+              borderRadius: "9999px",
+              fontWeight: 700,
+              marginTop: 4,
+            }}
+          >
+            [{user.role.replace(/_/g, " ")}]
+          </div>
           <form action="/api/auth/logout" method="POST">
             <Link
               href="/"
