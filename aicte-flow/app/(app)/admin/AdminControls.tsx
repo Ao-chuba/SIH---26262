@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { formatRole } from "@/lib/format";
 
 type UserItem = {
   id: string;
@@ -20,12 +22,14 @@ type TickItem = {
 };
 
 export function AdminControls({
+  initialTab = "clock",
   simulatedNow,
   currentDateIso,
   initialRules,
   users,
   recentTicks,
 }: {
+  initialTab?: "clock" | "rules" | "users" | "ticks";
   simulatedNow: string | null;
   currentDateIso: string;
   initialRules: any;
@@ -33,9 +37,10 @@ export function AdminControls({
   recentTicks: TickItem[];
 }) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"clock" | "rules" | "users" | "ticks">("clock");
+  const [activeTab, setActiveTab] = useState<"clock" | "rules" | "users" | "ticks">(initialTab);
   const [targetDate, setTargetDate] = useState(currentDateIso.slice(0, 10));
   const [tickResult, setTickResult] = useState<any | null>(null);
+  const [statusMsg, setStatusMsg] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [rules, setRules] = useState(initialRules);
@@ -44,6 +49,7 @@ export function AdminControls({
   async function handleClockAction(action: "reset" | "addDays" | "set", days?: number) {
     setLoading(true);
     setTickResult(null);
+    setStatusMsg(null);
     try {
       let body: any = {};
       if (action === "reset") body = { simulatedNow: null };
@@ -66,7 +72,7 @@ export function AdminControls({
       });
       router.refresh();
     } catch {
-      alert("Failed to update clock");
+      setStatusMsg({ kind: "error", text: "Failed to update clock." });
     } finally {
       setLoading(false);
     }
@@ -75,6 +81,7 @@ export function AdminControls({
   async function handleRunTick() {
     setLoading(true);
     setTickResult(null);
+    setStatusMsg(null);
     try {
       const res = await fetch("/api/engine/tick", { method: "POST" });
       const data = await res.json();
@@ -86,22 +93,22 @@ export function AdminControls({
       });
       router.refresh();
     } catch {
-      alert("Failed to run tick");
+      setStatusMsg({ kind: "error", text: "Failed to run engine tick." });
     } finally {
       setLoading(false);
     }
   }
 
   async function handleResetDemo() {
-    if (!confirm("Are you sure you want to reset all demo data? This will reseed the database.")) return;
     setResetting(true);
+    setStatusMsg(null);
     try {
       const res = await fetch("/api/admin/reset", { method: "POST" });
       const data = await res.json();
-      alert(data.message ?? "Demo database reset completed!");
+      setStatusMsg({ kind: "ok", text: data.message ?? "Database re-seeded." });
       router.refresh();
     } catch {
-      alert("Failed to reset database");
+      setStatusMsg({ kind: "error", text: "Failed to reset database." });
     } finally {
       setResetting(false);
     }
@@ -109,6 +116,7 @@ export function AdminControls({
 
   async function handleSaveRules() {
     setLoading(true);
+    setStatusMsg(null);
     try {
       await fetch("/api/admin/rules", {
         method: "PUT",
@@ -124,7 +132,7 @@ export function AdminControls({
       setTimeout(() => setRulesSaved(false), 3000);
       router.refresh();
     } catch {
-      alert("Failed to save rules");
+      setStatusMsg({ kind: "error", text: "Failed to save rules." });
     } finally {
       setLoading(false);
     }
@@ -132,141 +140,171 @@ export function AdminControls({
 
   return (
     <div>
-      {/* Simulation Impact Summary */}
-      {tickResult && (
+      {statusMsg && (
         <div
           style={{
-            marginBottom: 20,
-            padding: "18px 22px",
-            background: "#f8fafc",
-            border: "1px solid #cbd5e1",
-            borderRadius: 10,
-            color: "#0f172a",
-            boxShadow: "0 8px 24px -8px rgba(15,23,42,0.12)",
+            padding: "10px 14px",
+            marginBottom: 14,
+            borderRadius: 12,
+            background: statusMsg.kind === "ok" ? "var(--green-bg)" : "var(--red-bg)",
+            border: `1.5px solid ${statusMsg.kind === "ok" ? "var(--green-border)" : "var(--red-border)"}`,
+            color: statusMsg.kind === "ok" ? "var(--green)" : "var(--red)",
+            fontSize: 13,
+            fontWeight: 600,
           }}
         >
+          {statusMsg.text}
+        </div>
+      )}
+
+      {/* Simulation Summary */}
+      {tickResult && (
+        <div className="card" style={{ marginBottom: 20, border: "1.5px solid var(--forest)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <strong style={{ fontSize: 16 }}>[!] Simulation Impact Summary</strong>
-              <p style={{ fontSize: 12, color: "#64748b", margin: "4px 0 12px" }}>
-                Deadline engine results after this clock change / tick. Open linked modules to inspect live effects.
-              </p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-                <a href="/notifications" style={{ textDecoration: "none", padding: 12, borderRadius: 8, background: "#eff6ff", border: "1px solid #bfdbfe" }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: "#1d4ed8" }}>{tickResult.remindersFired ?? 0}</div>
-                  <div style={{ fontSize: 12, color: "#1e40af" }}>Reminders fired -&gt; Delivery Log</div>
-                </a>
-                <a href="/undertakings" style={{ textDecoration: "none", padding: 12, borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca" }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: "#b91c1c" }}>{tickResult.overdueMarked ?? 0}</div>
-                  <div style={{ fontSize: 12, color: "#991b1b" }}>Overdue marked -&gt; Undertakings / Docs</div>
-                </a>
-                <a href="/escalations" style={{ textDecoration: "none", padding: 12, borderRadius: 8, background: "#faf5ff", border: "1px solid #e9d5ff" }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: "#7c3aed" }}>{tickResult.escalations ?? 0}</div>
-                  <div style={{ fontSize: 12, color: "#6b21a8" }}>Escalations -&gt; Escalations inbox</div>
-                </a>
-              </div>
-              <div style={{ marginTop: 10, fontSize: 12, color: "#64748b" }}>
-                Clock:{" "}
-                <strong>
-                  {tickResult.tickedAt
-                    ? new Date(tickResult.tickedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-                    : "—"}
-                </strong>
+              <div className="card-title" style={{ marginBottom: 10 }}>Engine Tick Summary</div>
+              <div className="grid-3">
+                <Link
+                  href="/notifications?tab=delivery"
+                  style={{
+                    textDecoration: "none",
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    background: "var(--accent-blue)",
+                    border: "1px solid var(--forest)",
+                    color: "var(--forest)",
+                  }}
+                >
+                  <div className="font-mono" style={{ fontSize: 22, fontWeight: 900 }}>{tickResult.remindersFired ?? 0}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginTop: 2 }}>Reminders Fired &rarr;</div>
+                </Link>
+                <Link
+                  href="/undertakings"
+                  style={{
+                    textDecoration: "none",
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    background: "var(--red-bg)",
+                    border: "1px solid var(--red-border)",
+                    color: "var(--red)",
+                  }}
+                >
+                  <div className="font-mono" style={{ fontSize: 22, fontWeight: 900 }}>{tickResult.overdueMarked ?? 0}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginTop: 2 }}>Overdue Marked &rarr;</div>
+                </Link>
+                <Link
+                  href="/escalations"
+                  style={{
+                    textDecoration: "none",
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    background: "var(--purple-bg)",
+                    border: "1px solid var(--purple-border)",
+                    color: "var(--purple)",
+                  }}
+                >
+                  <div className="font-mono" style={{ fontSize: 22, fontWeight: 900 }}>{tickResult.escalations ?? 0}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginTop: 2 }}>Escalations Raised &rarr;</div>
+                </Link>
               </div>
             </div>
-            <button className="btn btn-secondary btn-sm" onClick={() => setTickResult(null)}>Dismiss</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setTickResult(null)}>
+              Close
+            </button>
           </div>
         </div>
       )}
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 8, borderBottom: "2px solid #e2e8f0", marginBottom: 20 }}>
+      <div className="tabs">
         <button
-          className={`btn ${activeTab === "clock" ? "btn-primary" : "btn-secondary"}`}
-          style={{ borderRadius: "6px 6px 0 0", marginBottom: -2 }}
+          type="button"
+          className={`tab ${activeTab === "clock" ? "active" : ""}`}
           onClick={() => setActiveTab("clock")}
         >
-          [CLOCK] Simulated Clock & Tick
+          Clock &amp; Tick
         </button>
         <button
-          className={`btn ${activeTab === "rules" ? "btn-primary" : "btn-secondary"}`}
-          style={{ borderRadius: "6px 6px 0 0", marginBottom: -2 }}
+          type="button"
+          className={`tab ${activeTab === "rules" ? "active" : ""}`}
           onClick={() => setActiveTab("rules")}
         >
-          [RULES] Rules & SLA Configuration
+          SLA Rules
         </button>
         <button
-          className={`btn ${activeTab === "users" ? "btn-primary" : "btn-secondary"}`}
-          style={{ borderRadius: "6px 6px 0 0", marginBottom: -2 }}
+          type="button"
+          className={`tab ${activeTab === "users" ? "active" : ""}`}
           onClick={() => setActiveTab("users")}
         >
-          [USERS] User Directory & Escalation Ladder
+          User Directory
         </button>
         <button
-          className={`btn ${activeTab === "ticks" ? "btn-primary" : "btn-secondary"}`}
-          style={{ borderRadius: "6px 6px 0 0", marginBottom: -2 }}
+          type="button"
+          className={`tab ${activeTab === "ticks" ? "active" : ""}`}
           onClick={() => setActiveTab("ticks")}
         >
-          [LOGS] Engine Tick History
+          Tick History
         </button>
       </div>
 
       {/* TAB 1: CLOCK */}
       {activeTab === "clock" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <div className="grid-2">
           <div className="card">
-            <div className="card-header"><span className="card-title">[SIM] Simulated Date Control</span></div>
-            <p style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
-              Fast-forward simulated time to trigger automatic T-minus reminders, mark overdue transitions, and climb officer escalation ladders.
-            </p>
-
-            <div style={{ padding: "12px 16px", background: simulatedNow ? "#fef3c7" : "#ecfdf5", borderRadius: 6, marginBottom: 20 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: simulatedNow ? "#92400e" : "#065f46" }}>
-                Current System Clock: {simulatedNow ? `[SIM: Simulated (${new Date(simulatedNow).toLocaleDateString()})]` : "[OK: Real Time]"}
+            <div className="card-header">
+              <span className="card-title">System Clock</span>
+              <span className={`badge ${simulatedNow ? "badge-amber" : "badge-green"}`}>
+                {simulatedNow
+                  ? `Simulated: ${new Date(simulatedNow).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
+                  : "Real Time"}
               </span>
             </div>
 
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
               <button disabled={loading} onClick={() => handleClockAction("addDays", 1)} className="btn btn-primary btn-sm">+1 Day</button>
               <button disabled={loading} onClick={() => handleClockAction("addDays", 7)} className="btn btn-primary btn-sm">+7 Days</button>
               <button disabled={loading} onClick={() => handleClockAction("addDays", 30)} className="btn btn-primary btn-sm">+30 Days</button>
-              <button disabled={loading} onClick={() => handleClockAction("reset")} className="btn btn-secondary btn-sm">[&lt;-] Reset to Real Time</button>
+              <button disabled={loading} onClick={() => handleClockAction("reset")} className="btn btn-secondary btn-sm">Reset Clock</button>
             </div>
 
-            <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 16 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 6 }}>Set Specific Date</label>
-              <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+              <label className="form-label">Set Specific Date</label>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <input
                   type="date"
-                  className="input-text"
+                  className="form-input"
                   value={targetDate}
                   onChange={(e) => setTargetDate(e.target.value)}
-                  style={{ width: 180 }}
+                  style={{ maxWidth: 200 }}
                 />
-                <button disabled={loading} onClick={() => handleClockAction("set")} className="btn btn-primary btn-sm">Set Date</button>
+                <button disabled={loading} onClick={() => handleClockAction("set")} className="btn btn-primary btn-sm">
+                  Apply
+                </button>
               </div>
             </div>
           </div>
 
           <div className="card">
-            <div className="card-header"><span className="card-title">[ENGINE] Engine Operations & Reset</span></div>
+            <div className="card-header">
+              <span className="card-title">Engine &amp; Database</span>
+            </div>
             <div style={{ marginBottom: 20 }}>
-              <h4 style={{ fontSize: 14, margin: "0 0 6px 0" }}>Manual Engine Tick</h4>
-              <p style={{ fontSize: 13, color: "#64748b", marginBottom: 10 }}>
-                Evaluate all open deadline items against current clock, fire pending alerts, send emails/SMS to notification delivery log, and advance escalations.
+              <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 6 }}>Deadline Engine Tick</div>
+              <p style={{ fontSize: 12.5, color: "var(--forest-muted)", marginBottom: 10 }}>
+                Evaluates open deadlines against the current date, dispatches reminders, and updates escalations.
               </p>
-              <button disabled={loading} onClick={handleRunTick} className="btn btn-primary">
-                {loading ? "Running Tick..." : "[&gt;] Run Tick Now"}
+              <button disabled={loading} onClick={handleRunTick} className="btn btn-primary btn-sm">
+                {loading ? "Running..." : "Run Tick Now"}
               </button>
             </div>
 
-            <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 16 }}>
-              <h4 style={{ fontSize: 14, margin: "0 0 6px 0", color: "#dc2626" }}>Demo Data Reset</h4>
-              <p style={{ fontSize: 13, color: "#64748b", marginBottom: 10 }}>
-                Re-seeds SQLite database with all 8 AICTE regions, ~60 institutions, 200 applications across 5 routes, undertakings, and documents.
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+              <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--red)", marginBottom: 6 }}>Reset Demo Data</div>
+              <p style={{ fontSize: 12.5, color: "var(--forest-muted)", marginBottom: 10 }}>
+                Re-seeds regions, institutions, applications, undertakings, and documents.
               </p>
-              <button disabled={resetting} onClick={handleResetDemo} className="btn btn-danger">
-                {resetting ? "Resetting Database..." : "[!] Reset Demo Data"}
+              <button disabled={resetting} onClick={handleResetDemo} className="btn btn-danger btn-sm">
+                {resetting ? "Resetting..." : "Reset Database"}
               </button>
             </div>
           </div>
@@ -277,65 +315,83 @@ export function AdminControls({
       {activeTab === "rules" && (
         <div className="card">
           <div className="card-header">
-            <span className="card-title">Rules & SLA Timelines</span>
-            {rulesSaved && <span style={{ color: "#16a34a", fontSize: 13, fontWeight: 600 }}>[OK] Saved successfully!</span>}
+            <span className="card-title">Stage SLA Timelines</span>
+            {rulesSaved && <span className="badge badge-green">Saved</span>}
           </div>
 
-          <div style={{ padding: "12px 16px", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 6, marginBottom: 20, fontSize: 13, color: "#92400e" }}>
-            <strong>Regulatory Notice:</strong> The values below are illustrative placeholders. Configure in alignment with the official AICTE Approval Process Handbook (APH). All modifications are recorded in the tamper-evident audit trail.
+          <div
+            style={{
+              padding: "10px 14px",
+              background: "var(--amber-bg)",
+              border: "1px solid var(--amber-border)",
+              borderRadius: 10,
+              marginBottom: 16,
+              fontSize: 12.5,
+              color: "var(--amber)",
+            }}
+          >
+            Stage timelines and EVC SLA limits are stored in RuleConfig and logged to the audit ledger when updated.
           </div>
 
           <table className="data-table" style={{ marginBottom: 20 }}>
             <thead>
               <tr>
-                <th>Workflow Stage</th>
-                <th>Responsible Role</th>
-                <th>SLA Timeline (Days)</th>
+                <th>Stage</th>
+                <th>Owner Role</th>
+                <th>Timeline (Days)</th>
               </tr>
             </thead>
             <tbody>
               {Object.entries(rules.STAGES).map(([key, stage]: [string, any]) => (
                 <tr key={key}>
-                  <td><strong>{stage.label}</strong> ({key})</td>
-                  <td><span className="badge badge-blue">{stage.ownerRole}</span></td>
                   <td>
-                    <input
-                      type="number"
-                      className="input-text"
-                      style={{ width: 80 }}
-                      value={stage.timelineDays}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value) || 1;
-                        setRules({
-                          ...rules,
-                          STAGES: { ...rules.STAGES, [key]: { ...stage, timelineDays: val } },
-                        });
-                      }}
-                    /> days
+                    <strong>{stage.label}</strong>
+                  </td>
+                  <td><span className="badge badge-blue">{formatRole(stage.ownerRole)}</span></td>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input
+                        type="number"
+                        className="form-input"
+                        style={{ width: 90 }}
+                        value={stage.timelineDays}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 1;
+                          setRules({
+                            ...rules,
+                            STAGES: { ...rules.STAGES, [key]: { ...stage, timelineDays: val } },
+                          });
+                        }}
+                      />
+                      <span style={{ fontSize: 12.5, color: "var(--forest-muted)" }}>days</span>
+                    </div>
                   </td>
                 </tr>
               ))}
               <tr>
                 <td><strong>EVC New Institution SLA</strong></td>
-                <td><span className="badge badge-red">EVC_COMMITTEE</span></td>
+                <td><span className="badge badge-red">EVC Committee</span></td>
                 <td>
-                  <input
-                    type="number"
-                    className="input-text"
-                    style={{ width: 80 }}
-                    value={rules.EVC_NEW_INSTITUTION_DAYS}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value) || 1;
-                      setRules({ ...rules, EVC_NEW_INSTITUTION_DAYS: val });
-                    }}
-                  /> days
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <input
+                      type="number"
+                      className="form-input"
+                      style={{ width: 90 }}
+                      value={rules.EVC_NEW_INSTITUTION_DAYS}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        setRules({ ...rules, EVC_NEW_INSTITUTION_DAYS: val });
+                      }}
+                    />
+                    <span style={{ fontSize: 12.5, color: "var(--forest-muted)" }}>days</span>
+                  </div>
                 </td>
               </tr>
             </tbody>
           </table>
 
           <button onClick={handleSaveRules} disabled={loading} className="btn btn-primary">
-            {loading ? "Saving..." : "[+] Save Rule Configuration"}
+            {loading ? "Saving..." : "Save Configuration"}
           </button>
         </div>
       )}
@@ -343,66 +399,97 @@ export function AdminControls({
       {/* TAB 3: USERS */}
       {activeTab === "users" && (
         <div className="card">
-          <div className="card-header"><span className="card-title">User Directory & Escalation Hierarchy</span></div>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Designation</th>
-                <th>Region</th>
-                <th>Escalates To</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div className="card-header">
+            <span className="card-title">Users &amp; Escalation Chain</span>
+            <span className="badge badge-gray">{users.length}</span>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Designation</th>
+                  <th>Region</th>
+                  <th>Escalates To</th>
+                </tr>
+              </thead>
+              <tbody>
               {users.map((u) => (
                 <tr key={u.id}>
                   <td><strong>{u.name}</strong></td>
-                  <td><code>{u.email}</code></td>
-                  <td><span className="badge badge-blue">{u.role}</span></td>
+                  <td><code style={{ fontSize: 12 }}>{u.email}</code></td>
+                  <td><span className="badge badge-blue">{formatRole(u.role)}</span></td>
                   <td>{u.designation || "—"}</td>
                   <td>{u.region}</td>
                   <td>
                     {u.escalatesTo !== "None" ? (
-                      <span className="badge badge-amber">[^] {u.escalatesTo}</span>
+                      <span className="badge badge-amber">{u.escalatesTo}</span>
                     ) : (
-                      <span style={{ color: "#94a3b8" }}>—</span>
+                      <span style={{ color: "var(--forest-light)" }}>—</span>
                     )}
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {/* TAB 4: TICKS */}
       {activeTab === "ticks" && (
         <div className="card">
-          <div className="card-header"><span className="card-title">Engine Execution Log (Last 20 Runs)</span></div>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Seq</th>
-                <th>Executed At</th>
-                <th>Summary Payload</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentTicks.map((t) => (
-                <tr key={t.seq}>
-                  <td><strong>#{t.seq}</strong></td>
-                  <td>{new Date(t.ts).toLocaleString()}</td>
-                  <td>
-                    <code style={{ fontSize: 12, background: "#f8fafc", padding: "4px 8px", borderRadius: 4 }}>
-                      {t.payload}
-                    </code>
-                  </td>
+          <div className="card-header">
+            <span className="card-title">Tick History</span>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Seq</th>
+                  <th>Timestamp</th>
+                  <th>Summary</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {recentTicks.map((t) => {
+                  let parsed: { remindersFired?: number; overdueMarked?: number; escalations?: number } | null = null;
+                  try {
+                    parsed = JSON.parse(t.payload);
+                  } catch {}
+                  return (
+                    <tr key={t.seq}>
+                      <td className="font-mono"><strong>#{t.seq}</strong></td>
+                      <td>{new Date(t.ts).toLocaleString()}</td>
+                      <td>
+                        {parsed ? (
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <span className="badge badge-blue">Reminders: {parsed.remindersFired ?? 0}</span>
+                            <span className="badge badge-red">Overdue: {parsed.overdueMarked ?? 0}</span>
+                            <span className="badge badge-purple">Escalations: {parsed.escalations ?? 0}</span>
+                          </div>
+                        ) : (
+                          <code
+                            style={{
+                              fontSize: 12,
+                              background: "var(--bg)",
+                              border: "1px solid var(--border)",
+                              padding: "4px 8px",
+                              borderRadius: 8,
+                            }}
+                          >
+                            {t.payload}
+                          </code>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

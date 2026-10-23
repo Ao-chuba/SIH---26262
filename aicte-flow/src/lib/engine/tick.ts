@@ -1,4 +1,4 @@
-import { prisma } from "../db";
+import { prisma, runTx } from "../db";
 import { getNow } from "../clock";
 import { notify } from "../notify";
 import { appendAudit } from "../audit";
@@ -27,21 +27,25 @@ export async function tick(now?: Date): Promise<TickSummary> {
     include: { alertLogs: true },
   });
 
+  let configuredAlertRules = ALERT_RULES;
+  try {
+    const rc = await prisma.ruleConfig.findUnique({ where: { key: "ALERT_RULES" } });
+    if (rc) configuredAlertRules = { ...ALERT_RULES, ...JSON.parse(rc.value) };
+  } catch {}
+
   for (const item of openItems) {
     const daysToDue = differenceInCalendarDays(item.dueAt, effectiveNow);
-    const rules = ALERT_RULES[item.kind];
+    const rules = configuredAlertRules[item.kind];
     if (!rules) continue;
 
     const firedKeys = new Set(item.alertLogs.map((a) => a.alertKey));
 
     // 1. Pre-due reminders (fire only the most urgent unfired one)
     if (daysToDue >= 0) {
-      // Find reminders where daysToDue <= abs(offset), sorted by most urgent first
-      const sortedReminders = [...rules.reminders].sort((a, b) => b - a); // e.g. [-1, -3, -7] → largest first (least urgent)
-      // Actually sort ascending so we check from most urgent
+      const sortedReminders = [...rules.reminders].sort((a, b) => b - a);
       const toFire = sortedReminders
         .filter((offset) => daysToDue <= Math.abs(offset) && !firedKeys.has(`T${offset}`))
-        .sort((a, b) => a - b); // most urgent (least negative) first
+        .sort((a, b) => b - a); // most urgent (closest to 0, e.g. 0 > -1 > -3) first
 
       if (toFire.length > 0) {
         const urgentOffset = toFire[0];
@@ -116,7 +120,7 @@ export async function tick(now?: Date): Promise<TickSummary> {
       }
       if (item.documentId) {
         const doc = await prisma.instDocument.findUnique({ where: { id: item.documentId } });
-        if (doc && doc.status === "VALID") {
+        if (doc && (doc.status === "VALID" || doc.status === "EXPIRING")) {
           await prisma.instDocument.update({
             where: { id: item.documentId },
             data: { status: "EXPIRED" },
@@ -166,21 +170,21 @@ export async function tick(now?: Date): Promise<TickSummary> {
               if (owner?.escalatesToId) {
                 escalateTo = await prisma.user.findUnique({ where: { id: owner.escalatesToId } });
               }
-              if (!escalateTo) {
-                if (step.level === 1) {
-                  escalateTo = await prisma.user.findFirst({
-                    where: { role: "REGIONAL_OFFICER", regionId: item.regionId ?? undefined },
-                  });
-                } else if (step.level === 2) {
-                  escalateTo = await prisma.user.findFirst({ where: { role: "REGIONAL_OFFICER" } });
-                } else {
-                  escalateTo = await prisma.user.findFirst({ where: { role: "BUREAU_OFFICER" } });
-                }
+            }
+            if (!escalateTo) {
+              if (step.level === 1) {
+                escalateTo = await prisma.user.findFirst({
+                  where: { role: "REGIONAL_OFFICER", regionId: item.regionId ?? undefined },
+                });
+              } else if (step.level === 2) {
+                escalateTo = await prisma.user.findFirst({ where: { role: "REGIONAL_OFFICER" } });
+              } else {
+                escalateTo = await prisma.user.findFirst({ where: { role: "BUREAU_OFFICER" } });
               }
             }
 
             if (escalateTo) {
-              await prisma.$transaction(async (tx) => {
+              await runTx(async (tx) => {
                 await tx.escalationEvent.create({
                   data: {
                     deadlineItemId: item.id,

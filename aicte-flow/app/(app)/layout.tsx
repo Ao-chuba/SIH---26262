@@ -1,22 +1,30 @@
 import { getCurrentUser, COOKIE_NAME } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { appendAudit } from "@/lib/audit";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import {
-  LayoutDashboard,
-  FileText,
-  Users,
-  ShieldCheck,
-  FolderOpen,
-  AlertTriangle,
-  Bell,
-  BarChart3,
-  History,
-  Settings,
-} from "lucide-react";
+import { SidebarNav } from "./SidebarNav";
 
 export const dynamic = "force-dynamic";
+
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: "System Admin",
+  BUREAU_OFFICER: "Bureau Officer",
+  REGIONAL_OFFICER: "Regional Officer",
+  EVC_COMMITTEE: "EVC Committee",
+  SAC_SHC_MEMBER: "SAC / SHC Member",
+  INSTITUTION: "Institution",
+};
+
+const ROLE_SHORT: Record<string, string> = {
+  ADMIN: "Admin",
+  BUREAU_OFFICER: "Bureau",
+  REGIONAL_OFFICER: "Regional",
+  EVC_COMMITTEE: "EVC",
+  SAC_SHC_MEMBER: "SAC/SHC",
+  INSTITUTION: "Institution",
+};
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -29,38 +37,59 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const clock = await prisma.systemClock.findUnique({ where: { id: 1 } });
   const isSimulating = !!clock?.simulatedNow;
 
-  const allUsers = await prisma.user.findMany({ orderBy: [{ role: "asc" }, { name: "asc" }] });
+  const allUsers = await prisma.user.findMany({
+    orderBy: [{ role: "asc" }, { name: "asc" }],
+  });
 
-  const isAdmin = user.role === "ADMIN";
-  const isBureau = user.role === "BUREAU_OFFICER";
-  const isRegional = user.role === "REGIONAL_OFFICER";
-  const isEVC = user.role === "EVC_COMMITTEE" || user.role === "SAC_SHC_MEMBER";
   const isInstitution = user.role === "INSTITUTION";
 
   async function switchUser(formData: FormData) {
     "use server";
     const userId = formData.get("userId") as string;
+    if (!userId) return;
+    const picked = await prisma.user.findUnique({ where: { id: userId } });
+    if (!picked) return;
     const cookieStore = await cookies();
     cookieStore.set(COOKIE_NAME, userId, { httpOnly: true, path: "/", sameSite: "lax" });
+    await appendAudit({
+      actorId: picked.id,
+      actorRole: picked.role,
+      action: "LOGIN_SWITCH",
+      entityType: "User",
+      entityId: picked.id,
+      payload: { userId: picked.id, role: picked.role },
+    });
     redirect("/dashboard");
   }
 
   const navItems = [
-    { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", roles: ["all"] },
-    { href: "/applications", icon: FileText, label: "Applications", roles: ["all"] },
-    ...(!isInstitution ? [{ href: "/evc", icon: Users, label: "EVC Management", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "EVC_COMMITTEE", "ADMIN"] }] : []),
-    ...(!isInstitution ? [{ href: "/undertakings", icon: ShieldCheck, label: "Undertakings", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] }] : [{ href: "/undertakings", icon: ShieldCheck, label: "My Undertakings", roles: ["all"] }]),
-    { href: "/documents", icon: FolderOpen, label: "Documents", roles: ["all"] },
-    { href: "/escalations", icon: AlertTriangle, label: "Escalations", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] },
-    { href: "/notifications", icon: Bell, label: "Notifications", roles: ["all"] },
-    { href: "/reports", icon: BarChart3, label: "Reports", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] },
-    { href: "/audit", icon: History, label: "Audit Trail", roles: ["BUREAU_OFFICER", "ADMIN", "REGIONAL_OFFICER"] },
-    { href: "/admin", icon: Settings, label: "Admin", roles: ["ADMIN"] },
-  ].filter((item) => item.roles.includes("all") || item.roles.includes(user.role));
+    { href: "/dashboard", label: "Dashboard", roles: ["all"] },
+    { href: "/applications", label: "Applications", roles: ["all"] },
+    ...(!isInstitution
+      ? [
+          {
+            href: "/evc",
+            label: "EVC Inspections",
+            roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "EVC_COMMITTEE", "SAC_SHC_MEMBER", "ADMIN"],
+          },
+        ]
+      : []),
+    ...(!isInstitution
+      ? [{ href: "/undertakings", label: "Undertakings", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] }]
+      : [{ href: "/undertakings", label: "Undertakings", roles: ["all"] }]),
+    { href: "/documents", label: "Documents & Leases", roles: ["all"] },
+    { href: "/escalations", label: "Escalations", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] },
+    { href: "/notifications", label: "Notifications", roles: ["all"] },
+    { href: "/reports", label: "Reports", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] },
+    { href: "/audit", label: "Audit Ledger", roles: ["BUREAU_OFFICER", "ADMIN", "REGIONAL_OFFICER"] },
+    { href: "/admin", label: "Administration", roles: ["ADMIN"] },
+  ]
+    .filter((item) => item.roles.includes("all") || item.roles.includes(user.role))
+    .map(({ href, label }) => ({ href, label }));
 
   const roleAccent =
     user.role === "INSTITUTION"
-      ? "#1F6B43"
+      ? "#18633B"
       : user.role === "REGIONAL_OFFICER"
         ? "#14281D"
         : user.role === "BUREAU_OFFICER"
@@ -69,117 +98,105 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             ? "#946200"
             : "#5A6B60";
 
+  const roleBadgeBg =
+    user.role === "INSTITUTION"
+      ? "var(--accent-sage)"
+      : user.role === "REGIONAL_OFFICER"
+        ? "var(--highlighter-yellow)"
+        : user.role === "BUREAU_OFFICER"
+          ? "var(--accent-blue)"
+          : user.role === "EVC_COMMITTEE" || user.role === "SAC_SHC_MEMBER"
+            ? "#FEF3C7"
+            : "var(--accent-peach)";
+
   return (
     <div data-role={user.role}>
       <div className="role-accent-stripe" style={{ background: roleAccent }} />
       {/* Sidebar */}
       <aside className="sidebar">
-        <div className="sidebar-logo" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <img
-            src="/logo.png"
-            alt="AICTE Logo"
-            style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 8 }}
-          />
-          <div>
+        <div className="sidebar-logo">
+          <Link href="/dashboard" style={{ textDecoration: "none" }}>
             <h1>
               AICTE Flow<span className="logo-dot" />
             </h1>
-            <p>Approval & Compliance Platform</p>
-          </div>
+            <p>Approval &amp; Compliance Portal</p>
+          </Link>
         </div>
 
-        <nav className="sidebar-nav">
-          <div className="nav-section-label">// Navigation</div>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link key={item.href} href={item.href} className="nav-item">
-                <Icon size={17} strokeWidth={2.2} style={{ flexShrink: 0, opacity: 0.85 }} />
-                <span>{item.label}</span>
-                {item.href === "/notifications" && unreadCount > 0 && (
-                  <span className="badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+        <SidebarNav items={navItems} unreadCount={unreadCount} />
 
         <div className="sidebar-user">
-          <div className="sidebar-user-title">Active Persona</div>
-          <div className="sidebar-user-name">{user.name}</div>
-          <div
-            className="sidebar-user-role"
-            style={{
-              display: "inline-block",
-              backgroundColor: "var(--highlighter-yellow)",
-              color: "var(--forest)",
-              padding: "2px 8px",
-              borderRadius: "9999px",
-              fontWeight: 700,
-              marginTop: 4,
-            }}
-          >
-            [{user.role.replace(/_/g, " ")}]
+          <div className="sidebar-user-title">Signed In As</div>
+          <div className="sidebar-user-name">
+            {user.name.replace(/^Institution User\s*[–-]\s*/i, "").trim()}
           </div>
-          <form action="/api/auth/logout" method="POST">
+          <div className="sidebar-user-role" style={{ background: roleBadgeBg }}>
+            {ROLE_LABELS[user.role] ?? user.role}
+          </div>
+          <div style={{ marginTop: 10 }}>
             <Link
               href="/"
-              style={{
-                display: "inline-block",
-                marginTop: 8,
-                fontSize: 11,
-                fontWeight: 700,
-                color: "var(--forest)",
-                textDecoration: "underline",
-              }}
+              className="btn btn-secondary btn-sm"
+              style={{ width: "100%", justifyContent: "space-between", fontSize: 11.5 }}
             >
-              Switch Role -&gt;
+              <span>Switch Role</span>
+              <span style={{ fontFamily: "var(--font-sans)" }}>&rarr;</span>
             </Link>
-          </form>
+          </div>
         </div>
       </aside>
 
       {/* Topbar */}
       <header className="topbar">
         <div className="topbar-title" id="page-title">
-          AICTE Approval Workflow
+          <span>AICTE Approval Workflow</span>
         </div>
 
         {isSimulating && (
-          <div className="clock-badge">
-            [SIM-CLOCK: {new Date(clock!.simulatedNow!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}]
-          </div>
+          <Link href={user.role === "ADMIN" ? "/admin" : "/dashboard"} className="clock-badge" title="Simulated clock active">
+            Sim Clock: {new Date(clock!.simulatedNow!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+          </Link>
         )}
 
-        <div className="role-persona-badge">
-          [{user.role.replace(/_/g, " ")}]
+        <div className="role-persona-badge" style={{ background: roleBadgeBg }}>
+          {ROLE_SHORT[user.role] ?? user.role}
         </div>
 
         <div className="user-switcher">
-          <form action={switchUser} style={{ display: "flex", gap: 8 }}>
-            <select name="userId" defaultValue={user.id}>
-              {allUsers.map((u) => (
-                <option key={u.id} value={u.id}>
-                  [{u.role.split("_")[0]}] {u.name.split("–")[0].trim()}
-                </option>
-              ))}
+          <form action={switchUser} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <select name="userId" defaultValue={user.id} aria-label="Switch user">
+              {allUsers.map((u) => {
+                const shortRole = ROLE_SHORT[u.role] ?? u.role;
+                const cleanName = u.name.replace(/^Institution User\s*[–-]\s*/i, "").trim();
+                return (
+                  <option key={u.id} value={u.id}>
+                    {shortRole} · {cleanName}
+                  </option>
+                );
+              })}
             </select>
-            <button type="submit" className="btn btn-secondary btn-sm">
-              Switch -&gt;
+            <button type="submit" className="btn btn-primary btn-sm">
+              Switch
             </button>
           </form>
         </div>
 
-        <Link href="/notifications" className="notif-bell" title="Alerts & Delivery Log">
-          <Bell size={14} strokeWidth={2.2} />
+        <Link href="/notifications" className="notif-bell" title="Notifications">
           <span>Alerts</span>
-          {unreadCount > 0 && <span className="notif-count">{unreadCount > 9 ? "9+" : unreadCount}</span>}
+          {unreadCount > 0 && <span className="notif-count">{unreadCount > 99 ? "99+" : unreadCount}</span>}
         </Link>
       </header>
 
       {/* Main content */}
       <main className="main">
-        {children}
+        <div className="main-body">{children}</div>
+
+        <footer className="safeguards-banner">
+          <strong>Statutory Notice:</strong>
+          <span>
+            Workflow routing and APH checks assist scrutiny; final approvals rest with the competent authority.
+          </span>
+        </footer>
       </main>
     </div>
   );

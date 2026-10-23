@@ -45,8 +45,14 @@ export async function POST(request: NextRequest) {
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const { applicationType, studentIntake, facultyCount } = parsed.data;
-  const institutionId = user.institutionId!;
+  const { applicationType, studentIntake, facultyCount, details } = parsed.data;
+  const fallbackInst = user.institutionId
+    ? null
+    : await prisma.institution.findFirst({ select: { id: true } });
+  const institutionId = user.institutionId ?? fallbackInst?.id;
+  if (!institutionId) {
+    return NextResponse.json({ error: "No institution available for submission" }, { status: 400 });
+  }
   const institution = await prisma.institution.findUniqueOrThrow({ where: { id: institutionId } });
 
   const intake = studentIntake ?? 60;
@@ -91,13 +97,25 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  if (details?.trim()) {
+    await prisma.observation.create({
+      data: {
+        applicationId: app.id,
+        stageKey: "SCRUTINY",
+        authorId: user.id,
+        text: details.trim(),
+        kind: "OBSERVATION",
+      },
+    });
+  }
+
   await appendAudit({
     actorId: user.id,
     actorRole: user.role,
     action: "APPLICATION_CREATED",
     entityType: "Application",
     entityId: app.id,
-    payload: { refNo, applicationType, institutionId },
+    payload: { refNo, applicationType, institutionId, details: details?.trim() || null },
   });
 
   await routeApplication(app.id, user);
