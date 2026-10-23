@@ -299,6 +299,37 @@ export default async function LoginPage() {
           </div>
         </div>
 
+        {/* Jury 60-second cheat sheet */}
+        <div
+          className="card"
+          style={{
+            padding: "20px 24px",
+            background: "var(--highlighter-yellow)",
+            borderRadius: 16,
+            border: "1.5px solid var(--border)",
+            marginBottom: 24,
+          }}
+        >
+          <div style={{ fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: 13, marginBottom: 8, color: "var(--forest)" }}>
+            [JURY PATH] 5 minutes
+          </div>
+          <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--forest)", lineHeight: 1.55 }}>
+            <li>
+              Enter as <strong>Regional Officer</strong> → open <strong>DEMO-NEW-INST-001</strong> (APH norms + dual-clock).
+            </li>
+            <li>
+              Switch to <strong>Admin</strong> → <code>/admin</code> → <strong>+7 Days</strong> (Simulation Impact Summary).
+            </li>
+            <li>
+              Open <code>/audit</code> → Verify → Simulate Tamper → Restore.
+            </li>
+            <li>Point to the footer banner: automation assists; humans decide.</li>
+          </ol>
+          <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--forest)" }}>
+            Preferred accounts: <code>ro.central.alpha@demo.aicte</code> · <code>admin@demo.aicte</code>
+          </p>
+        </div>
+
         {/* Specific User Quick Selector */}
         <div
           className="card"
