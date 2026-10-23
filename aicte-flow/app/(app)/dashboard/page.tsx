@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { differenceInCalendarDays } from "date-fns";
 import { getNow } from "@/lib/clock";
 import Link from "next/link";
+import { JuryLaunchpad } from "../JuryLaunchpad";
 
 function SlaChip({ days, escalationLevel }: { days: number; escalationLevel?: number }) {
   if (escalationLevel && escalationLevel > 0) {
@@ -19,6 +20,13 @@ export default async function DashboardPage() {
   if (!user) redirect("/");
 
   const now = await getNow();
+  const launchpad = (
+    <JuryLaunchpad
+      userRole={user.role}
+      regionId={user.regionId}
+      institutionId={user.institutionId}
+    />
+  );
 
   if (user.role === "REGIONAL_OFFICER") {
     const [pending, myApps, evcCount, overdueUt, expiringDocs, escalated] = await Promise.all([
@@ -49,6 +57,7 @@ export default async function DashboardPage() {
 
     return (
       <div>
+        {launchpad}
         <div className="page-header">
           <div>
             <h1 className="page-title">Regional Dashboard</h1>
@@ -120,6 +129,7 @@ export default async function DashboardPage() {
 
     return (
       <div>
+        {launchpad}
         <div className="page-header">
           <div>
             <h1 className="page-title">Bureau Dashboard</h1>
@@ -166,6 +176,7 @@ export default async function DashboardPage() {
 
     return (
       <div>
+        {launchpad}
         <div className="page-header">
           <div>
             <h1 className="page-title">EVC Committee Dashboard</h1>
@@ -221,6 +232,7 @@ export default async function DashboardPage() {
 
     return (
       <div>
+        {launchpad}
         <div className="page-header">
           <div>
             <h1 className="page-title">My Institution Dashboard</h1>
@@ -289,6 +301,7 @@ export default async function DashboardPage() {
 
   return (
     <div>
+      {launchpad}
       <div className="page-header">
         <div>
           <h1 className="page-title">Admin Dashboard</h1>
