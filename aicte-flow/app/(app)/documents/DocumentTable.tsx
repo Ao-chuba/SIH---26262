@@ -167,7 +167,7 @@ export function DocumentTable({
                     <td style={{ minWidth: 160 }}>
                       <div style={{ marginBottom: 4 }}>
                         <span className={`sla-chip ${days < 0 ? "red" : days <= 30 ? "red" : days <= 90 ? "amber" : "green"}`}>
-                          {days < 0 ? `${Math.abs(days)}d expired` : `${days}d left`}
+                          {days < 0 ? `[EXPIRED ${Math.abs(days)}d]` : `[VALID ${days}d]`}
                         </span>
                       </div>
                       <div
@@ -203,7 +203,7 @@ export function DocumentTable({
                               setRenewalFileName(`renewed_${doc.docType.toLowerCase()}_${doc.id.slice(-5)}.pdf`);
                             }}
                           >
-                            🔄 Submit Renewal
+                            [^] Submit Renewal
                           </button>
                         )}
 
@@ -216,14 +216,14 @@ export function DocumentTable({
                                 disabled={loading}
                                 onClick={() => handleVerify(doc.id, true)}
                               >
-                                ✓ Verify
+                                [+] Verify
                               </button>
                               <button
                                 className="btn btn-danger btn-sm"
                                 disabled={loading}
                                 onClick={() => handleVerify(doc.id, false)}
                               >
-                                ✗ Reject
+                                [-] Reject
                               </button>
                             </>
                           )}

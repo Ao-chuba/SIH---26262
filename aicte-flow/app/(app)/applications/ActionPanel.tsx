@@ -117,21 +117,21 @@ export function ActionPanel({ app, user }: { app: Application; user: User }) {
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {canAdvance && app.status === "IN_PROGRESS" && app.currentStageKey !== "DECISION_PENDING" && (
           <button className="btn btn-success" onClick={doAdvance} disabled={loading}>
-            ✅ Advance to Next Stage
+            [+] Advance to Next Stage
           </button>
         )}
         {canReturn && (
           <button className="btn btn-secondary" onClick={() => setShowReturn(true)} disabled={loading}>
-            ↩️ Return with Reason
+            [&lt;-] Return with Reason
           </button>
         )}
         {canDecide && (
           <button className="btn btn-primary" onClick={() => setShowDecide(true)} disabled={loading}>
-            ⚖️ Record Decision
+            [!] Record Decision
           </button>
         )}
         <button className="btn btn-secondary" onClick={() => setShowObserve(true)} disabled={loading}>
-          💬 Add Observation
+          [+] Add Observation
         </button>
         {isInstitution && app.status === "RETURNED" && (
           <form onSubmit={(e) => { e.preventDefault(); doReply(new FormData(e.target as HTMLFormElement)); }} style={{ display: "flex", gap: 8, width: "100%", marginTop: 8 }}>
@@ -145,7 +145,7 @@ export function ActionPanel({ app, user }: { app: Application; user: User }) {
       {showReturn && (
         <div className="modal-overlay" onClick={() => setShowReturn(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-title">↩️ Return Application</div>
+            <div className="modal-title">[&lt;-] Return Application</div>
             <div style={{ background: "#fffbeb", border: "1px solid #fbbf24", padding: "10px 12px", borderRadius: 6, fontSize: 12, color: "#7c5c00", marginBottom: 16 }}>
               A reason is mandatory. This will be recorded in the audit trail and notified to the institution.
             </div>
@@ -165,7 +165,7 @@ export function ActionPanel({ app, user }: { app: Application; user: User }) {
       {showObserve && (
         <div className="modal-overlay" onClick={() => setShowObserve(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-title">💬 Add Observation</div>
+            <div className="modal-title">[+] Add Observation</div>
             <div className="form-group">
               <label className="form-label">Kind</label>
               <select className="form-select" value={obsKind} onChange={(e) => setObsKind(e.target.value)}>
@@ -190,7 +190,7 @@ export function ActionPanel({ app, user }: { app: Application; user: User }) {
       {showDecide && (
         <div className="modal-overlay" onClick={() => setShowDecide(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-title">⚖️ Record Decision</div>
+            <div className="modal-title">[!] Record Decision</div>
             <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", padding: "10px 12px", borderRadius: 6, fontSize: 12, color: "#b91c1c", marginBottom: 16 }}>
               <strong>IMPORTANT:</strong> This is a human decision by the competent authority. The system does NOT auto-approve or auto-reject. This action will be permanently recorded in the audit trail.
             </div>

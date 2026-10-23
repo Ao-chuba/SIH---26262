@@ -147,22 +147,22 @@ export function AdminControls({
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <strong style={{ fontSize: 16 }}>⚡ Simulation Impact Summary</strong>
+              <strong style={{ fontSize: 16 }}>[!] Simulation Impact Summary</strong>
               <p style={{ fontSize: 12, color: "#64748b", margin: "4px 0 12px" }}>
                 Deadline engine results after this clock change / tick. Open linked modules to inspect live effects.
               </p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
                 <a href="/notifications" style={{ textDecoration: "none", padding: 12, borderRadius: 8, background: "#eff6ff", border: "1px solid #bfdbfe" }}>
                   <div style={{ fontSize: 22, fontWeight: 700, color: "#1d4ed8" }}>{tickResult.remindersFired ?? 0}</div>
-                  <div style={{ fontSize: 12, color: "#1e40af" }}>Reminders fired → Delivery Log</div>
+                  <div style={{ fontSize: 12, color: "#1e40af" }}>Reminders fired -&gt; Delivery Log</div>
                 </a>
                 <a href="/undertakings" style={{ textDecoration: "none", padding: 12, borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca" }}>
                   <div style={{ fontSize: 22, fontWeight: 700, color: "#b91c1c" }}>{tickResult.overdueMarked ?? 0}</div>
-                  <div style={{ fontSize: 12, color: "#991b1b" }}>Overdue marked → Undertakings / Docs</div>
+                  <div style={{ fontSize: 12, color: "#991b1b" }}>Overdue marked -&gt; Undertakings / Docs</div>
                 </a>
                 <a href="/escalations" style={{ textDecoration: "none", padding: 12, borderRadius: 8, background: "#faf5ff", border: "1px solid #e9d5ff" }}>
                   <div style={{ fontSize: 22, fontWeight: 700, color: "#7c3aed" }}>{tickResult.escalations ?? 0}</div>
-                  <div style={{ fontSize: 12, color: "#6b21a8" }}>Escalations → Escalations inbox</div>
+                  <div style={{ fontSize: 12, color: "#6b21a8" }}>Escalations -&gt; Escalations inbox</div>
                 </a>
               </div>
               <div style={{ marginTop: 10, fontSize: 12, color: "#64748b" }}>
@@ -186,28 +186,28 @@ export function AdminControls({
           style={{ borderRadius: "6px 6px 0 0", marginBottom: -2 }}
           onClick={() => setActiveTab("clock")}
         >
-          🕒 Simulated Clock & Tick
+          [CLOCK] Simulated Clock & Tick
         </button>
         <button
           className={`btn ${activeTab === "rules" ? "btn-primary" : "btn-secondary"}`}
           style={{ borderRadius: "6px 6px 0 0", marginBottom: -2 }}
           onClick={() => setActiveTab("rules")}
         >
-          ⚙️ Rules & SLA Configuration
+          [RULES] Rules & SLA Configuration
         </button>
         <button
           className={`btn ${activeTab === "users" ? "btn-primary" : "btn-secondary"}`}
           style={{ borderRadius: "6px 6px 0 0", marginBottom: -2 }}
           onClick={() => setActiveTab("users")}
         >
-          👥 User Directory & Escalation Ladder
+          [USERS] User Directory & Escalation Ladder
         </button>
         <button
           className={`btn ${activeTab === "ticks" ? "btn-primary" : "btn-secondary"}`}
           style={{ borderRadius: "6px 6px 0 0", marginBottom: -2 }}
           onClick={() => setActiveTab("ticks")}
         >
-          📜 Engine Tick History
+          [LOGS] Engine Tick History
         </button>
       </div>
 
@@ -215,14 +215,14 @@ export function AdminControls({
       {activeTab === "clock" && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
           <div className="card">
-            <div className="card-header"><span className="card-title">⏰ Simulated Date Control</span></div>
+            <div className="card-header"><span className="card-title">[SIM] Simulated Date Control</span></div>
             <p style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
               Fast-forward simulated time to trigger automatic T-minus reminders, mark overdue transitions, and climb officer escalation ladders.
             </p>
 
             <div style={{ padding: "12px 16px", background: simulatedNow ? "#fef3c7" : "#ecfdf5", borderRadius: 6, marginBottom: 20 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: simulatedNow ? "#92400e" : "#065f46" }}>
-                Current System Clock: {simulatedNow ? `🕒 Simulated (${new Date(simulatedNow).toLocaleDateString()})` : "🟢 Real Time"}
+                Current System Clock: {simulatedNow ? `[SIM: Simulated (${new Date(simulatedNow).toLocaleDateString()})]` : "[OK: Real Time]"}
               </span>
             </div>
 
@@ -230,7 +230,7 @@ export function AdminControls({
               <button disabled={loading} onClick={() => handleClockAction("addDays", 1)} className="btn btn-primary btn-sm">+1 Day</button>
               <button disabled={loading} onClick={() => handleClockAction("addDays", 7)} className="btn btn-primary btn-sm">+7 Days</button>
               <button disabled={loading} onClick={() => handleClockAction("addDays", 30)} className="btn btn-primary btn-sm">+30 Days</button>
-              <button disabled={loading} onClick={() => handleClockAction("reset")} className="btn btn-secondary btn-sm">↺ Reset to Real Time</button>
+              <button disabled={loading} onClick={() => handleClockAction("reset")} className="btn btn-secondary btn-sm">[&lt;-] Reset to Real Time</button>
             </div>
 
             <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 16 }}>
@@ -249,14 +249,14 @@ export function AdminControls({
           </div>
 
           <div className="card">
-            <div className="card-header"><span className="card-title">⚙️ Engine Operations & Reset</span></div>
+            <div className="card-header"><span className="card-title">[ENGINE] Engine Operations & Reset</span></div>
             <div style={{ marginBottom: 20 }}>
               <h4 style={{ fontSize: 14, margin: "0 0 6px 0" }}>Manual Engine Tick</h4>
               <p style={{ fontSize: 13, color: "#64748b", marginBottom: 10 }}>
                 Evaluate all open deadline items against current clock, fire pending alerts, send emails/SMS to notification delivery log, and advance escalations.
               </p>
               <button disabled={loading} onClick={handleRunTick} className="btn btn-primary">
-                {loading ? "Running Tick..." : "⚡ Run Tick Now"}
+                {loading ? "Running Tick..." : "[&gt;] Run Tick Now"}
               </button>
             </div>
 
@@ -266,7 +266,7 @@ export function AdminControls({
                 Re-seeds SQLite database with all 8 AICTE regions, ~60 institutions, 200 applications across 5 routes, undertakings, and documents.
               </p>
               <button disabled={resetting} onClick={handleResetDemo} className="btn btn-danger">
-                {resetting ? "Resetting Database..." : "⚠️ Reset Demo Data"}
+                {resetting ? "Resetting Database..." : "[!] Reset Demo Data"}
               </button>
             </div>
           </div>
@@ -278,7 +278,7 @@ export function AdminControls({
         <div className="card">
           <div className="card-header">
             <span className="card-title">Rules & SLA Timelines</span>
-            {rulesSaved && <span style={{ color: "#16a34a", fontSize: 13, fontWeight: 600 }}>✅ Saved successfully!</span>}
+            {rulesSaved && <span style={{ color: "#16a34a", fontSize: 13, fontWeight: 600 }}>[OK] Saved successfully!</span>}
           </div>
 
           <div style={{ padding: "12px 16px", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 6, marginBottom: 20, fontSize: 13, color: "#92400e" }}>
@@ -335,7 +335,7 @@ export function AdminControls({
           </table>
 
           <button onClick={handleSaveRules} disabled={loading} className="btn btn-primary">
-            {loading ? "Saving..." : "💾 Save Rule Configuration"}
+            {loading ? "Saving..." : "[+] Save Rule Configuration"}
           </button>
         </div>
       )}
@@ -365,7 +365,7 @@ export function AdminControls({
                   <td>{u.region}</td>
                   <td>
                     {u.escalatesTo !== "None" ? (
-                      <span className="badge badge-amber">🔺 {u.escalatesTo}</span>
+                      <span className="badge badge-amber">[^] {u.escalatesTo}</span>
                     ) : (
                       <span style={{ color: "#94a3b8" }}>—</span>
                     )}

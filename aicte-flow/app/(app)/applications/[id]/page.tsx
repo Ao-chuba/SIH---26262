@@ -10,10 +10,10 @@ import { parseMetrics, evaluateAph } from "@/lib/aph";
 import { computeDualClock } from "@/lib/dualClock";
 
 function SlaChip({ days, escalationLevel }: { days: number; escalationLevel?: number }) {
-  if (escalationLevel && escalationLevel > 0) return <span className="sla-chip purple">🔺 ESC-L{escalationLevel}</span>;
-  if (days < 0) return <span className="sla-chip red">🔴 {Math.abs(days)}d overdue</span>;
-  if (days <= 3) return <span className="sla-chip amber">🟡 {days}d left</span>;
-  return <span className="sla-chip green">🟢 {days}d left</span>;
+  if (escalationLevel && escalationLevel > 0) return <span className="sla-chip purple">[ESC:L{escalationLevel}]</span>;
+  if (days < 0) return <span className="sla-chip red">[OVERDUE {Math.abs(days)}d]</span>;
+  if (days <= 3) return <span className="sla-chip amber">[DUE {days}d]</span>;
+  return <span className="sla-chip green">[OK {days}d]</span>;
 }
 
 function RouteStepper({
@@ -47,7 +47,7 @@ function RouteStepper({
           <div key={stage} className="stage-step">
             <div className="stage-step-wrap">
               <div className={`stage-dot ${isDone ? "done" : isCurrent ? "current" : "future"}`}>
-                {isDone ? "✓" : i + 1}
+                {isDone ? "[x]" : i + 1}
               </div>
               <div className="stage-label" title={meta?.subtitle ?? label}>
                 {label}
@@ -130,7 +130,9 @@ function AphNormsCard({ metricsJson }: { metricsJson: string | null }) {
               border: `1px solid ${c.pass ? "#a7f3d0" : "#fecaca"}`,
             }}
           >
-            <span style={{ fontSize: 16 }}>{c.pass ? "✅" : "❌"}</span>
+            <span style={{ fontSize: 13, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
+              {c.pass ? "[PASS]" : "[FAIL]"}
+            </span>
             <div>
               <div style={{ fontWeight: 600, fontSize: 13, color: c.pass ? "#065f46" : "#991b1b" }}>{c.label}</div>
               <div style={{ fontSize: 12, color: "#475569" }}>{c.detail}</div>
@@ -178,7 +180,7 @@ export default async function ApplicationDetailPage({
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
-        <Link href="/applications" style={{ color: "#64748b", fontSize: 13 }}>← Applications</Link>
+        <Link href="/applications" style={{ color: "#64748b", fontSize: 13 }}>&lt;- Applications</Link>
         <div className="page-header" style={{ marginTop: 8, marginBottom: 0 }}>
           <div>
             <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -225,7 +227,7 @@ export default async function ApplicationDetailPage({
 
       <div className="grid-2" style={{ gap: 16 }}>
         <div className="card">
-          <div className="card-title" style={{ marginBottom: 12 }}>📅 Stage Timeline</div>
+          <div className="card-title" style={{ marginBottom: 12 }}>[TIMELINE] Stage Timeline</div>
           {app.stages.map((s) => (
             <div key={s.id} style={{ display: "flex", gap: 12, padding: "8px 0", borderBottom: "1px solid #f0f4f8" }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.exitedAt ? "#22c55e" : "#2a5298", flexShrink: 0, marginTop: 6 }} />
@@ -243,7 +245,7 @@ export default async function ApplicationDetailPage({
         </div>
 
         <div className="card">
-          <div className="card-title" style={{ marginBottom: 12 }}>💬 Observations</div>
+          <div className="card-title" style={{ marginBottom: 12 }}>[NOTES] Observations</div>
           {app.observations.length === 0 && <p style={{ fontSize: 13, color: "#64748b" }}>No observations yet.</p>}
           {app.observations.map((obs) => (
             <div key={obs.id} style={{ padding: "10px 0", borderBottom: "1px solid #f0f4f8" }}>
@@ -258,7 +260,7 @@ export default async function ApplicationDetailPage({
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="card-title" style={{ marginBottom: 12 }}>⏰ All Deadlines</div>
+        <div className="card-title" style={{ marginBottom: 12 }}>[DEADLINES] All Deadlines</div>
         <table className="data-table">
           <thead><tr><th>Kind</th><th>Title</th><th>Due</th><th>State</th><th>Escalation</th></tr></thead>
           <tbody>
@@ -277,7 +279,7 @@ export default async function ApplicationDetailPage({
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="card-title" style={{ marginBottom: 12 }}>🏫 Institution Details</div>
+        <div className="card-title" style={{ marginBottom: 12 }}>[INSTITUTION] Institution Details</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, fontSize: 13 }}>
           {[
             ["AICTE ID", app.institution.aicteId],
@@ -297,7 +299,7 @@ export default async function ApplicationDetailPage({
 
       <div style={{ marginTop: 16 }}>
         <a href={`/api/applications/${app.id}/summary`} target="_blank" className="btn btn-secondary">
-          📄 View Case Summary
+          [DOC] View Case Summary
         </a>
       </div>
     </div>

@@ -12,11 +12,41 @@ export default async function LoginPage() {
   });
 
   const roleCards = [
-    { role: "INSTITUTION", label: "Institution", icon: "🏫", desc: "Submit applications, track status, manage compliance", color: "#2a5298" },
-    { role: "REGIONAL_OFFICER", label: "Regional Officer", icon: "👤", desc: "Process applications, schedule EVC, verify compliance", color: "#15803d" },
-    { role: "BUREAU_OFFICER", label: "Bureau Officer", icon: "🏛️", desc: "All-region oversight, decisions, workload management", color: "#7c3aed" },
-    { role: "EVC_COMMITTEE", label: "EVC Committee", icon: "🔍", desc: "Manage Expert Visit Committee queue and visits", color: "#b45309" },
-    { role: "ADMIN", label: "Admin", icon: "⚙️", desc: "System configuration, clock control, audit & reports", color: "#b91c1c" },
+    {
+      role: "INSTITUTION",
+      asciiTag: "[INSTITUTION]",
+      label: "Institution Portal",
+      desc: "Submit applications, track live stage SLA, resolve queries & compliance undertakings",
+      badgeColor: "var(--accent-blue)",
+    },
+    {
+      role: "REGIONAL_OFFICER",
+      asciiTag: "[REGIONAL]",
+      label: "Regional Officer",
+      desc: "Scrutiny, deficiency checks, EVC queue management & institutional compliance verification",
+      badgeColor: "var(--highlighter-yellow)",
+    },
+    {
+      role: "BUREAU_OFFICER",
+      asciiTag: "[BUREAU]",
+      label: "Bureau Officer",
+      desc: "All-region pendency oversight, SAC/SHC monitoring & final competent authority decisions",
+      badgeColor: "var(--accent-blue)",
+    },
+    {
+      role: "EVC_COMMITTEE",
+      asciiTag: "[EVC]",
+      label: "EVC Committee",
+      desc: "Manage Expert Visit Committee inspections, schedule visits & upload inspection reports",
+      badgeColor: "var(--accent-sage)",
+    },
+    {
+      role: "ADMIN",
+      asciiTag: "[ADMIN]",
+      label: "System Admin",
+      desc: "Simulated time engine, dynamic SLA rules, user directory & cryptographic audit ledger",
+      badgeColor: "var(--accent-peach)",
+    },
   ];
 
   async function switchUser(formData: FormData) {
@@ -29,64 +59,349 @@ export default async function LoginPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0f2040 0%, #1e3a5f 50%, #2a5298 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
-      <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <div style={{ fontSize: 40, marginBottom: 8 }}>🎓</div>
-        <h1 style={{ color: "#fff", fontSize: 28, fontWeight: 800, letterSpacing: -0.5 }}>AICTE Flow</h1>
-        <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 14, marginTop: 6 }}>Approval Workflow Automation & Compliance Monitoring System</p>
-        <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, marginTop: 4 }}>Problem Statement 26262 • SIH Demo</p>
-      </div>
-
-      <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 16, padding: 32, width: "100%", maxWidth: 860, backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.12)" }}>
-        <h2 style={{ color: "#fff", fontSize: 16, fontWeight: 600, marginBottom: 20, textAlign: "center" }}>Select Your Role to Continue</h2>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginBottom: 32 }}>
-          {roleCards.map((card) => (
-            <form key={card.role} action={switchUser}>
-              <input type="hidden" name="userId" value={users.find((u) => u.role === card.role)?.id ?? ""} />
-              <button
-                type="submit"
-                className="role-card-btn"
-                style={{
-                  width: "100%",
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  borderRadius: 12,
-                  padding: "16px 12px",
-                  cursor: "pointer",
-                  textAlign: "center",
-                  transition: "all 0.2s",
-                  color: "#fff",
-                }}
-              >
-                <div style={{ fontSize: 28, marginBottom: 8 }}>{card.icon}</div>
-                <div style={{ fontWeight: 700, fontSize: 13 }}>{card.label}</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginTop: 4 }}>{card.desc}</div>
-              </button>
-            </form>
-          ))}
+    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+      {/* HeyFriends! Style Header */}
+      <header
+        style={{
+          borderBottom: "1.5px solid var(--border)",
+          background: "var(--card-bg)",
+          padding: "16px 32px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontWeight: 800,
+              fontSize: 16,
+              background: "var(--forest)",
+              color: "var(--highlighter-yellow)",
+              padding: "4px 10px",
+              borderRadius: "9999px",
+              letterSpacing: "0.05em",
+            }}
+          >
+            [::]
+          </span>
+          <span style={{ fontSize: 22, fontWeight: 900, color: "var(--forest)", letterSpacing: "-0.03em" }}>
+            AICTE Flow<span style={{ color: "var(--accent-blue)" }}>!</span>
+          </span>
+          <span
+            style={{
+              fontSize: 11,
+              fontFamily: "var(--font-mono)",
+              background: "var(--highlighter-yellow)",
+              color: "var(--forest)",
+              padding: "2px 8px",
+              borderRadius: "9999px",
+              fontWeight: 700,
+            }}
+          >
+            SIH-26262
+          </span>
         </div>
 
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: 24 }}>
-          <h3 style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 600, marginBottom: 12, textAlign: "center" }}>Or choose a specific user account:</h3>
-          <form action={switchUser} style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-            <select name="userId" style={{ padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.1)", color: "#fff", fontSize: 13, cursor: "pointer", flex: 1, maxWidth: 360 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <span style={{ fontSize: 13, color: "var(--muted)", fontWeight: 500 }}>
+            APH Workflow Automation System
+          </span>
+          <span
+            style={{
+              padding: "6px 16px",
+              background: "var(--accent-blue)",
+              color: "var(--forest)",
+              borderRadius: "9999px",
+              fontSize: 12,
+              fontWeight: 700,
+              fontFamily: "var(--font-mono)",
+            }}
+          >
+            [LIVE DEMO]
+          </span>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <main style={{ flex: 1, maxWidth: 1180, width: "100%", margin: "0 auto", padding: "48px 24px" }}>
+        <div style={{ textAlign: "center", maxWidth: 840, margin: "0 auto 48px" }}>
+          <div
+            style={{
+              display: "inline-block",
+              background: "var(--accent-blue)",
+              color: "var(--forest)",
+              padding: "6px 18px",
+              borderRadius: "9999px",
+              fontSize: 12,
+              fontWeight: 700,
+              fontFamily: "var(--font-mono)",
+              marginBottom: 20,
+              letterSpacing: "0.04em",
+            }}
+          >
+            [!] STATUTORY APPROVAL PROCESS AUTOMATION
+          </div>
+
+          <h1
+            style={{
+              fontSize: "clamp(2rem, 4vw, 3.25rem)",
+              fontWeight: 900,
+              color: "var(--forest)",
+              lineHeight: 1.15,
+              letterSpacing: "-0.035em",
+              marginBottom: 20,
+            }}
+          >
+            Unlock effortless{" "}
+            <span
+              style={{
+                position: "relative",
+                display: "inline-block",
+                padding: "0 8px",
+              }}
+            >
+              <span
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "var(--highlighter-yellow)",
+                  borderRadius: "9999px",
+                  transform: "rotate(-1deg)",
+                  zIndex: 0,
+                }}
+              />
+              <span style={{ position: "relative", zIndex: 1 }}>AICTE growth</span>
+            </span>{" "}
+            with end-to-end workflow clarity.
+          </h1>
+
+          <p
+            style={{
+              fontSize: 17,
+              color: "var(--muted)",
+              lineHeight: 1.6,
+              maxWidth: 720,
+              margin: "0 auto",
+            }}
+          >
+            A modern, transparent compliance monitoring portal for institutions, regional offices, and central bureau.
+            Features strict SLA countdowns, cryptographic audit ledger, and simulated time machine.
+          </p>
+        </div>
+
+        {/* Role Cards Grid */}
+        <div style={{ marginBottom: 40 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 20,
+            }}
+          >
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--forest)", margin: 0 }}>
+              Select a Role to Enter Portal
+            </h2>
+            <span style={{ fontSize: 12, color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
+              [SELECT ROLE]
+            </span>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+              gap: 16,
+            }}
+          >
+            {roleCards.map((card) => {
+              const matchedUser = users.find((u) => u.role === card.role);
+              return (
+                <form key={card.role} action={switchUser} style={{ display: "flex" }}>
+                  <input type="hidden" name="userId" value={matchedUser?.id ?? ""} />
+                  <button
+                    type="submit"
+                    className="card"
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      padding: "22px 18px",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      border: "1.5px solid var(--border)",
+                      borderRadius: 18,
+                      background: "var(--card-bg)",
+                      transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          display: "inline-block",
+                          fontFamily: "var(--font-mono)",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          background: card.badgeColor,
+                          color: "var(--forest)",
+                          padding: "3px 10px",
+                          borderRadius: "9999px",
+                          marginBottom: 14,
+                        }}
+                      >
+                        {card.asciiTag}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 16,
+                          fontWeight: 800,
+                          color: "var(--forest)",
+                          marginBottom: 8,
+                          letterSpacing: "-0.02em",
+                        }}
+                      >
+                        {card.label}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "var(--muted)",
+                          lineHeight: 1.5,
+                          marginBottom: 20,
+                        }}
+                      >
+                        {card.desc}
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        padding: "8px 14px",
+                        background: "var(--forest)",
+                        color: "#FAF8F5",
+                        borderRadius: "9999px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        textAlign: "center",
+                        fontFamily: "var(--font-mono)",
+                        marginTop: "auto",
+                      }}
+                    >
+                      Enter -&gt;
+                    </div>
+                  </button>
+                </form>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Specific User Quick Selector */}
+        <div
+          className="card"
+          style={{
+            padding: "24px 28px",
+            background: "var(--card-bg)",
+            borderRadius: 20,
+            border: "1.5px solid var(--border)",
+            marginBottom: 32,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 16,
+              flexWrap: "wrap",
+              gap: 8,
+            }}
+          >
+            <div>
+              <span style={{ fontWeight: 800, fontSize: 15, color: "var(--forest)" }}>
+                Or Launch Specific User Session
+              </span>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--muted)" }}>
+                Pick from regional officers, institution coordinators, or bureau administrators
+              </p>
+            </div>
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                color: "var(--muted)",
+                background: "var(--bg-subtle)",
+                padding: "3px 8px",
+                borderRadius: "9999px",
+              }}
+            >
+              [ACCOUNT SELECTOR]
+            </span>
+          </div>
+
+          <form action={switchUser} style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <select
+              name="userId"
+              className="form-select"
+              style={{
+                flex: 1,
+                minWidth: 280,
+                borderRadius: "9999px",
+                padding: "10px 18px",
+                fontSize: 13,
+                fontFamily: "var(--font-sans)",
+                border: "1.5px solid var(--border)",
+                background: "var(--card-bg)",
+              }}
+            >
               {users.map((u) => (
-                <option key={u.id} value={u.id} style={{ background: "#1e3a5f", color: "#fff" }}>
-                  [{u.role}] {u.name} — {u.email}
+                <option key={u.id} value={u.id}>
+                  [{u.role}] {u.name} — {u.email} ({u.institution?.name ?? u.region?.name ?? "Central"})
                 </option>
               ))}
             </select>
-            <button type="submit" style={{ background: "#2a5298", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
-              Enter →
+            <button
+              type="submit"
+              className="btn btn-primary"
+              style={{
+                borderRadius: "9999px",
+                padding: "10px 24px",
+                fontSize: 13,
+                fontWeight: 700,
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              Launch Session -&gt;
             </button>
           </form>
         </div>
-      </div>
 
-      <div style={{ marginTop: 24, color: "rgba(255,255,255,0.4)", fontSize: 12, textAlign: "center", maxWidth: 600 }}>
-        <strong>Demo system.</strong> All data is synthetic. Timelines are illustrative placeholders — configure per AICTE Approval Process Handbook.
-      </div>
+        {/* Regulatory Disclaimer Notice */}
+        <div
+          style={{
+            padding: "14px 20px",
+            background: "var(--bg-subtle)",
+            borderRadius: 14,
+            border: "1px dashed var(--border)",
+            fontSize: 12,
+            color: "var(--muted)",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: "var(--forest)" }}>
+            [!] STATUTORY NOTICE:
+          </span>
+          <span>
+            Demo system for SIH Problem Statement 26262. All data is synthetic. Timelines and SLA parameters are
+            configurable to match AICTE Approval Process Handbook (APH) regulations.
+          </span>
+        </div>
+      </main>
     </div>
   );
 }

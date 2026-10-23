@@ -34,28 +34,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const navItems = [
-    { href: "/dashboard", icon: "📊", label: "Dashboard", roles: ["all"] },
-    { href: "/applications", icon: "📋", label: "Applications", roles: ["all"] },
-    ...(!isInstitution ? [{ href: "/evc", icon: "🔍", label: "EVC Management", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "EVC_COMMITTEE", "ADMIN"] }] : []),
-    ...(!isInstitution ? [{ href: "/undertakings", icon: "📝", label: "Undertakings", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] }] : [{ href: "/undertakings", icon: "📝", label: "My Undertakings", roles: ["all"] }]),
-    { href: "/documents", icon: "📄", label: "Documents", roles: ["all"] },
-    { href: "/escalations", icon: "⚠️", label: "Escalations", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] },
-    { href: "/notifications", icon: "🔔", label: "Notifications", roles: ["all"] },
-    { href: "/reports", icon: "📈", label: "Reports", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] },
-    { href: "/audit", icon: "🔒", label: "Audit Trail", roles: ["BUREAU_OFFICER", "ADMIN", "REGIONAL_OFFICER"] },
-    { href: "/admin", icon: "⚙️", label: "Admin", roles: ["ADMIN"] },
+    { href: "/dashboard", icon: "[::]", label: "Dashboard", roles: ["all"] },
+    { href: "/applications", icon: "[#]", label: "Applications", roles: ["all"] },
+    ...(!isInstitution ? [{ href: "/evc", icon: "[?]", label: "EVC Management", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "EVC_COMMITTEE", "ADMIN"] }] : []),
+    ...(!isInstitution ? [{ href: "/undertakings", icon: "[=]", label: "Undertakings", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] }] : [{ href: "/undertakings", icon: "[=]", label: "My Undertakings", roles: ["all"] }]),
+    { href: "/documents", icon: "[~]", label: "Documents", roles: ["all"] },
+    { href: "/escalations", icon: "[!]", label: "Escalations", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] },
+    { href: "/notifications", icon: "[*]", label: "Notifications", roles: ["all"] },
+    { href: "/reports", icon: "[^]", label: "Reports", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] },
+    { href: "/audit", icon: "[%]", label: "Audit Trail", roles: ["BUREAU_OFFICER", "ADMIN", "REGIONAL_OFFICER"] },
+    { href: "/admin", icon: "[+]", label: "Admin", roles: ["ADMIN"] },
   ].filter((item) => item.roles.includes("all") || item.roles.includes(user.role));
 
   const roleAccent =
     user.role === "INSTITUTION"
-      ? "#059669"
+      ? "#1F6B43"
       : user.role === "REGIONAL_OFFICER"
-        ? "#1e40af"
+        ? "#14281D"
         : user.role === "BUREAU_OFFICER"
-          ? "#7c3aed"
+          ? "#3B4B9C"
           : user.role === "EVC_COMMITTEE" || user.role === "SAC_SHC_MEMBER"
-            ? "#d97706"
-            : "#475569";
+            ? "#946200"
+            : "#5A6B60";
 
   return (
     <div data-role={user.role}>
@@ -63,15 +63,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <h1>🎓 AICTE Flow</h1>
-          <p>Approval & Compliance System</p>
+          <h1>
+            AICTE Flow<span className="logo-dot" />
+          </h1>
+          <p>Approval & Compliance Platform</p>
         </div>
 
         <nav className="sidebar-nav">
-          <div className="nav-section-label">Navigation</div>
+          <div className="nav-section-label">// Navigation</div>
           {navItems.map((item) => (
             <Link key={item.href} href={item.href} className="nav-item">
-              <span>{item.icon}</span>
+              <span className="nav-ascii">{item.icon}</span>
               <span>{item.label}</span>
               {item.href === "/notifications" && unreadCount > 0 && (
                 <span className="badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
@@ -80,13 +82,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           ))}
         </nav>
 
-        <div style={{ padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 4 }}>Signed in as</div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>{user.name}</div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 1 }}>{user.role.replace("_", " ")}</div>
+        <div className="sidebar-user">
+          <div className="sidebar-user-title">Active Persona</div>
+          <div className="sidebar-user-name">{user.name}</div>
+          <div className="sidebar-user-role">[{user.role.replace(/_/g, " ")}]</div>
           <form action="/api/auth/logout" method="POST">
-            <Link href="/" style={{ display: "inline-block", marginTop: 8, fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "underline" }}>
-              Switch user →
+            <Link
+              href="/"
+              style={{
+                display: "inline-block",
+                marginTop: 8,
+                fontSize: 11,
+                fontWeight: 700,
+                color: "var(--forest)",
+                textDecoration: "underline",
+              }}
+            >
+              Switch Role -&gt;
             </Link>
           </form>
         </div>
@@ -94,59 +106,49 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       {/* Topbar */}
       <header className="topbar">
-        <div className="topbar-title" id="page-title">AICTE Approval Workflow</div>
+        <div className="topbar-title" id="page-title">
+          AICTE Approval Workflow
+        </div>
 
         {isSimulating && (
           <div className="clock-badge">
-            🕒 Simulated: {new Date(clock!.simulatedNow!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+            [SIM-CLOCK: {new Date(clock!.simulatedNow!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}]
           </div>
         )}
 
-        <div
-          className="role-persona-badge"
-          style={{
-            background: `${roleAccent}14`,
-            border: `1px solid ${roleAccent}55`,
-            color: roleAccent,
-            fontSize: 11,
-            fontWeight: 700,
-            padding: "4px 10px",
-            borderRadius: 999,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {user.role.replace(/_/g, " ")}
+        <div className="role-persona-badge">
+          [{user.role.replace(/_/g, " ")}]
         </div>
 
         <div className="user-switcher">
-          <form action={switchUser} style={{ display: "flex", gap: 6 }}>
-            <select name="userId" defaultValue={user.id} style={{ fontSize: 12, padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: 6, background: "#fff", cursor: "pointer", maxWidth: 220 }}>
+          <form action={switchUser} style={{ display: "flex", gap: 8 }}>
+            <select name="userId" defaultValue={user.id}>
               {allUsers.map((u) => (
                 <option key={u.id} value={u.id}>
                   [{u.role.split("_")[0]}] {u.name.split("–")[0].trim()}
                 </option>
               ))}
             </select>
-            <button type="submit" style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
-              Switch
+            <button type="submit" className="btn btn-secondary btn-sm">
+              Switch -&gt;
             </button>
           </form>
         </div>
 
-        <Link href="/notifications" className="notif-bell">
-          🔔
+        <Link href="/notifications" className="notif-bell" title="Alerts & Delivery Log">
+          <span>[*] Alerts</span>
           {unreadCount > 0 && <span className="notif-count">{unreadCount > 9 ? "9+" : unreadCount}</span>}
         </Link>
       </header>
 
       {/* Main content */}
-      <main className="main" style={{ paddingBottom: 80 }}>
+      <main className="main">
         {children}
       </main>
 
       {/* Safeguards banner */}
       <div className="safeguards-banner">
-        ⚠️ Automated alerts and workflow actions support the approval process. They do not replace statutory scrutiny, verification, inspection or decisions of the competent authority.
+        [!] STATUTORY NOTICE: Automated alerts and workflow actions support the approval process. They do not replace statutory scrutiny, verification, inspection or decisions of the competent authority.
       </div>
     </div>
   );

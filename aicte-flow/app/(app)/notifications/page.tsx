@@ -55,9 +55,9 @@ export default async function NotificationsPage({
       </div>
 
       <div className="tabs">
-        <span className="tab active">📬 Inbox ({inbox.length})</span>
+        <span className="tab active">[INBOX] Inbox ({inbox.length})</span>
         {(user.role === "ADMIN" || user.role === "BUREAU_OFFICER") && (
-          <span className="tab">📡 Delivery Log ({deliveryLog.length})</span>
+          <span className="tab">[DELIVERY] Delivery Log ({deliveryLog.length})</span>
         )}
       </div>
 
@@ -91,7 +91,7 @@ export default async function NotificationsPage({
             </div>
             <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
               {notif.applicationId && (
-                <Link href={`/applications/${notif.applicationId}`} className="btn btn-secondary btn-sm">View →</Link>
+                <Link href={`/applications/${notif.applicationId}`} className="btn btn-secondary btn-sm">View -&gt;</Link>
               )}
               {!notif.readAt && (
                 <form action={markRead}>
@@ -106,7 +106,7 @@ export default async function NotificationsPage({
 
       {deliveryLog.length > 0 && (
         <div className="card" style={{ marginTop: 16 }}>
-          <div className="card-title" style={{ marginBottom: 12 }}>📡 Simulated Delivery Log (EMAIL/SMS)</div>
+          <div className="card-title" style={{ marginBottom: 12 }}>[LOG] Simulated Delivery Log (EMAIL/SMS)</div>
           <table className="data-table">
             <thead><tr><th>Channel</th><th>Kind</th><th>Subject</th><th>Sent At</th></tr></thead>
             <tbody>

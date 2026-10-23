@@ -28,13 +28,13 @@ export default async function AuditPage() {
         </div>
         <div style={{ display: "flex", gap: 12 }}>
           <a href="/api/audit?format=csv" className="btn btn-secondary">
-            📥 Export CSV
+            [^] Export CSV
           </a>
         </div>
       </div>
 
-      <div style={{ marginBottom: 20, padding: "14px 18px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, color: "#475569" }}>
-        <strong>🔒 Immutability Guarantee:</strong> Every audit entry is cryptographically linked to the previous entry via SHA-256 hash chaining: <code>hash = sha256(prevHash + ts + actor + action + entity + payload)</code>. Any database modification or row deletion invalidates the chain.
+      <div style={{ marginBottom: 20, padding: "14px 18px", background: "var(--card-bg)", borderRadius: 14, border: "1.5px solid var(--border)", fontSize: 13, color: "var(--muted)" }}>
+        <strong style={{ color: "var(--forest)" }}>[#] Immutability Guarantee:</strong> Every audit entry is cryptographically linked to the previous entry via SHA-256 hash chaining: <code>hash = sha256(prevHash + ts + actor + action + entity + payload)</code>. Any database modification or row deletion invalidates the chain.
       </div>
 
       <AuditTable

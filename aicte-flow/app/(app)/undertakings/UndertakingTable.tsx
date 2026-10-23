@@ -136,7 +136,7 @@ export function UndertakingTable({
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
           <form onSubmit={handleVerify} style={{ background: "#fff", padding: 24, borderRadius: 8, width: 440 }}>
             <h3 style={{ margin: "0 0 12px 0" }}>
-              {verifyMode === "approve" ? "✅ Verify Undertaking Compliance" : "❌ Reject Compliance Evidence"}
+              {verifyMode === "approve" ? "[+] Verify Undertaking Compliance" : "[-] Reject Compliance Evidence"}
             </h3>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Officer Inspection Remarks *</label>
@@ -210,7 +210,7 @@ export function UndertakingTable({
                     <td>
                       {["PENDING", "OVERDUE", "SUBMITTED"].includes(ut.status) ? (
                         <span className={`sla-chip ${days < 0 ? "red" : days <= 7 ? "amber" : "green"}`}>
-                          {days < 0 ? `${Math.abs(days)}d overdue` : `${days}d left`}
+                          {days < 0 ? `[OVERDUE ${Math.abs(days)}d]` : `[DUE ${days}d]`}
                         </span>
                       ) : (
                         "—"
@@ -229,7 +229,7 @@ export function UndertakingTable({
                               setEvidenceName(`compliance_${ut.applicationRefNo}.pdf`);
                             }}
                           >
-                            📤 Upload Evidence
+                            [^] Upload Evidence
                           </button>
                         )}
                         {(userRole === "REGIONAL_OFFICER" || userRole === "ADMIN" || userRole === "BUREAU_OFFICER") && ut.status === "SUBMITTED" && (
@@ -243,7 +243,7 @@ export function UndertakingTable({
                                 setRemarks("Evidence verified and found in order.");
                               }}
                             >
-                              ✓ Verify
+                              [+] Verify
                             </button>
                             <button
                               className="btn btn-danger btn-sm"
@@ -253,7 +253,7 @@ export function UndertakingTable({
                                 setRemarks("Evidence insufficient: deficiencies unresolved.");
                               }}
                             >
-                              ✗ Reject
+                              [-] Reject
                             </button>
                           </>
                         )}
