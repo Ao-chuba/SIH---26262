@@ -101,14 +101,14 @@ export function AuditTable({
                 className="btn btn-secondary"
                 title="Demo only: mutate one payload without updating its hash"
               >
-                🧪 Simulate Tamper
+                [~] Simulate Tamper
               </button>
               <button
                 onClick={() => handleTamper("restore")}
                 disabled={tamperBusy || !tamperOn}
                 className="btn btn-secondary"
               >
-                ↩️ Restore
+                [&lt;-] Restore
               </button>
             </>
           )}
@@ -118,7 +118,7 @@ export function AuditTable({
             className="btn btn-primary"
             style={{ background: "#0f766e" }}
           >
-            {verifyStatus.running ? "Verifying SHA-256 chain..." : "🛡️ Verify Chain Integrity"}
+            {verifyStatus.running ? "Verifying SHA-256 chain..." : "[VERIFY] Check Chain Integrity"}
           </button>
         </div>
       </div>
@@ -142,11 +142,11 @@ export function AuditTable({
         >
           {verifyStatus.result.ok ? (
             <div>
-              <strong>✅ Hash Chain Verification Passed:</strong> All cryptographic hashes in the ledger are verified and intact from sequence #1. No tampering detected.
+              <strong>[VALID] Hash Chain Verification Passed:</strong> All cryptographic hashes in the ledger are verified and intact from sequence #1. No tampering detected.
             </div>
           ) : (
             <div>
-              <strong>❌ Cryptographic Chain Violation Detected!</strong> Tamper detected at sequence #{verifyStatus.result.brokenAtSeq}. The computed hash does not match stored block.
+              <strong>[ALERT] Cryptographic Chain Violation Detected!</strong> Tamper detected at sequence #{verifyStatus.result.brokenAtSeq}. The computed hash does not match stored block.
             </div>
           )}
         </div>

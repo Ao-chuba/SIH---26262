@@ -64,10 +64,10 @@ export default async function EscalationsPage() {
                     </td>
                     <td><span className="badge badge-blue">{item.kind.replace("_", " ")}</span></td>
                     <td>{new Date(item.dueAt).toLocaleDateString()}</td>
-                    <td><span className="sla-chip red">🔴 {Math.max(0, overdueDays)}d</span></td>
+                    <td><span className="sla-chip red">[OVERDUE {Math.max(0, overdueDays)}d]</span></td>
                     <td>
                       <span className={`sla-chip ${item.escalationLevel >= 3 ? "red" : item.escalationLevel === 2 ? "amber" : "purple"}`}>
-                        🔺 L{item.escalationLevel}
+                        [ESC:L{item.escalationLevel}]
                       </span>
                     </td>
                     <td style={{ fontSize: 12 }}>{lastEsc?.escalatedTo.name ?? "—"} ({lastEsc?.escalatedTo.role.split("_")[0] ?? "—"})</td>

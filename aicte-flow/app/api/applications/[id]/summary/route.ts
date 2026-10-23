@@ -44,7 +44,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 </head>
 <body>
   <div class="disclaimer">
-    ⚠️ <strong>System-generated summary to support, not replace, officer verification.</strong>
+    [!] <strong>System-generated summary to support, not replace, officer verification.</strong>
     This document is auto-generated and should be used only as a reference aid. All statutory scrutiny, verification and decisions must be made by the competent authority.
   </div>
 
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   </table>
   `}
 
-  <button class="no-print" onclick="window.print()" style="background: #2a5298; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-top: 16px;">🖨️ Print / Save as PDF</button>
+  <button class="no-print" onclick="window.print()" style="background: #14281D; color: #FAF8F5; border: none; padding: 10px 22px; border-radius: 9999px; cursor: pointer; font-size: 13px; font-weight: 700; font-family: monospace; margin-top: 16px;">[PRINT] Save as PDF</button>
 </body>
 </html>`;
 

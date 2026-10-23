@@ -6,10 +6,10 @@ import { getNow } from "@/lib/clock";
 import Link from "next/link";
 
 function SlaChip({ days, escalationLevel }: { days: number; escalationLevel?: number }) {
-  if (escalationLevel && escalationLevel > 0) return <span className="sla-chip purple">🔺 ESC-L{escalationLevel}</span>;
-  if (days < 0) return <span className="sla-chip red">🔴 {Math.abs(days)}d overdue</span>;
-  if (days <= 3) return <span className="sla-chip amber">🟡 {days}d left</span>;
-  return <span className="sla-chip green">🟢 {days}d left</span>;
+  if (escalationLevel && escalationLevel > 0) return <span className="sla-chip purple">[ESC:L{escalationLevel}]</span>;
+  if (days < 0) return <span className="sla-chip red">[OVERDUE {Math.abs(days)}d]</span>;
+  if (days <= 3) return <span className="sla-chip amber">[DUE {days}d]</span>;
+  return <span className="sla-chip green">[OK {days}d]</span>;
 }
 
 export const dynamic = "force-dynamic";

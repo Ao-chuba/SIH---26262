@@ -49,7 +49,7 @@ export default async function EvcPage() {
 
       {/* EVC Queue */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-header"><span className="card-title">⏳ EVC Queue (Awaiting Scheduling)</span></div>
+        <div className="card-header"><span className="card-title">[QUEUE] EVC Queue (Awaiting Scheduling)</span></div>
         <div style={{ overflowX: "auto" }}>
           <table className="data-table">
             <thead><tr><th>Application</th><th>Institution</th><th>Type</th><th>New Inst?</th><th>Queued Since</th><th>Days Waiting</th><th>Action</th></tr></thead>
@@ -76,7 +76,7 @@ export default async function EvcPage() {
 
       {/* Scheduled Visits */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-header"><span className="card-title">📅 Scheduled Visits</span></div>
+        <div className="card-header"><span className="card-title">[SCHEDULED] Scheduled Visits</span></div>
         <table className="data-table">
           <thead><tr><th>Application</th><th>Institution</th><th>Scheduled For</th><th>SLA</th><th>New Inst?</th><th>Status</th></tr></thead>
           <tbody>
@@ -88,7 +88,7 @@ export default async function EvcPage() {
                   <td><Link href={`/applications/${v.applicationId}`} style={{ color: "#2a5298" }}>{v.application.institution.name}</Link></td>
                   <td>{v.application.institution.name}</td>
                   <td>{v.scheduledFor ? new Date(v.scheduledFor).toLocaleDateString() : "—"}</td>
-                  <td><span className={`sla-chip ${isOverdue ? "red" : days <= 3 ? "amber" : "green"}`}>{isOverdue ? `${Math.abs(days)}d overdue` : `${days}d left`}</span></td>
+                  <td><span className={`sla-chip ${isOverdue ? "red" : days <= 3 ? "amber" : "green"}`}>{isOverdue ? `[OVERDUE ${Math.abs(days)}d]` : `[DUE ${days}d]`}</span></td>
                   <td>{v.isNewInstitution ? <span className="badge badge-red">New</span> : <span className="badge badge-gray">Existing</span>}</td>
                   <td><span className="badge badge-amber">SCHEDULED</span></td>
                 </tr>
@@ -100,7 +100,7 @@ export default async function EvcPage() {
 
       {/* Completed */}
       <div className="card">
-        <div className="card-header"><span className="card-title">✅ Completed Visits</span></div>
+        <div className="card-header"><span className="card-title">[COMPLETED] Completed Visits</span></div>
         <table className="data-table">
           <thead><tr><th>Institution</th><th>Completed</th><th>Report Ref</th></tr></thead>
           <tbody>

@@ -7,11 +7,11 @@ import Link from "next/link";
 
 function SlaChip({ days, escalationLevel }: { days: number; escalationLevel?: number }) {
   if (escalationLevel && escalationLevel > 0) {
-    return <span className="sla-chip purple">🔺 ESC-L{escalationLevel}</span>;
+    return <span className="sla-chip purple">[ESC:L{escalationLevel}]</span>;
   }
-  if (days < 0) return <span className="sla-chip red">🔴 {Math.abs(days)}d overdue</span>;
-  if (days <= 3) return <span className="sla-chip amber">🟡 {days}d left</span>;
-  return <span className="sla-chip green">🟢 {days}d left</span>;
+  if (days < 0) return <span className="sla-chip red">[OVERDUE {Math.abs(days)}d]</span>;
+  if (days <= 3) return <span className="sla-chip amber">[DUE {days}d]</span>;
+  return <span className="sla-chip green">[OK {days}d]</span>;
 }
 
 export default async function DashboardPage() {
@@ -69,7 +69,7 @@ export default async function DashboardPage() {
         <div className="card">
           <div className="card-header">
             <span className="card-title">My Worklist</span>
-            <Link href="/applications" className="btn btn-secondary btn-sm">View All →</Link>
+            <Link href="/applications" className="btn btn-secondary btn-sm">View All -&gt;</Link>
           </div>
           <div style={{ overflowX: "auto" }}>
             <table className="data-table">
@@ -179,7 +179,7 @@ export default async function DashboardPage() {
         </div>
         {overdue.length > 0 && (
           <div className="card">
-            <div className="card-title" style={{ marginBottom: 16 }}>⚠️ Overdue EVC Visits</div>
+            <div className="card-title" style={{ marginBottom: 16 }}>[!] Overdue EVC Visits</div>
             <table className="data-table">
               <thead><tr><th>Application</th><th>Institution</th><th>Scheduled For</th><th>Overdue</th></tr></thead>
               <tbody>
@@ -188,7 +188,7 @@ export default async function DashboardPage() {
                     <td><Link href={`/applications/${v.applicationId}`} style={{ color: "#2a5298" }}>{v.application.institution.name}</Link></td>
                     <td>{v.application.institution.name}</td>
                     <td>{v.scheduledFor?.toLocaleDateString()}</td>
-                    <td><span className="sla-chip red">🔴 {differenceInCalendarDays(now, v.scheduledFor!)}d overdue</span></td>
+                    <td><span className="sla-chip red">[OVERDUE {differenceInCalendarDays(now, v.scheduledFor!)}d]</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -196,7 +196,7 @@ export default async function DashboardPage() {
           </div>
         )}
         <div style={{ marginTop: 16 }}>
-          <Link href="/evc" className="btn btn-primary">View EVC Queue →</Link>
+          <Link href="/evc" className="btn btn-primary">View EVC Queue -&gt;</Link>
         </div>
       </div>
     );
@@ -256,7 +256,7 @@ export default async function DashboardPage() {
             <div className="card-title" style={{ marginBottom: 12 }}>Pending Actions Required</div>
             {myUt.map((ut) => (
               <div key={ut.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: "1px solid #f0f4f8" }}>
-                <span>📝</span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, background: "var(--accent-blue)", padding: "2px 6px", borderRadius: 4 }}>[UT]</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{ut.title}</div>
                   <div style={{ fontSize: 12, color: "#64748b" }}>Undertaking • Due {ut.dueDate.toLocaleDateString()}</div>
@@ -266,7 +266,7 @@ export default async function DashboardPage() {
             ))}
             {myDocs.map((doc) => (
               <div key={doc.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: "1px solid #f0f4f8" }}>
-                <span>📄</span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, background: "var(--highlighter-yellow)", padding: "2px 6px", borderRadius: 4 }}>[DOC]</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{doc.title}</div>
                   <div style={{ fontSize: 12, color: "#64748b" }}>Document • Expires {doc.validUntil.toLocaleDateString()}</div>
@@ -294,7 +294,7 @@ export default async function DashboardPage() {
           <h1 className="page-title">Admin Dashboard</h1>
           <p className="page-subtitle">System Administration • {user.name}</p>
         </div>
-        <Link href="/admin" className="btn btn-primary">⚙️ Admin Panel</Link>
+        <Link href="/admin" className="btn btn-primary">[ADMIN] Admin Panel</Link>
       </div>
 
       <div className="kpi-grid">
@@ -307,11 +307,11 @@ export default async function DashboardPage() {
         <div className="card">
           <div className="card-title" style={{ marginBottom: 12 }}>Quick Links</div>
           {[
-            ["⚙️ Rules Editor", "/admin"],
-            ["⏰ Clock Control", "/admin#clock"],
-            ["🔒 Audit Trail", "/audit"],
-            ["📈 Reports", "/reports"],
-            ["👤 User Management", "/admin#users"],
+            ["[RULES] Rules Editor", "/admin"],
+            ["[CLOCK] Clock Control", "/admin#clock"],
+            ["[AUDIT] Audit Trail", "/audit"],
+            ["[REPORTS] Reports", "/reports"],
+            ["[USERS] User Management", "/admin#users"],
           ].map(([label, href]) => (
             <Link key={href} href={href} className="nav-item" style={{ color: "#1e3a5f", padding: "8px 0", borderBottom: "1px solid #f0f4f8" }}>
               {label}

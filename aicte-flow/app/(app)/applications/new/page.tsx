@@ -111,7 +111,7 @@ export default function NewApplicationPage() {
         {/* Dynamic Route Preview Banner */}
         <div style={{ padding: "14px 18px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, marginBottom: 24 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#166534", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
-            🔄 Configured Automated Workflow Route:
+            [ROUTE] Configured Automated Workflow Route:
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             {routeSteps.map((step, idx) => (
@@ -119,7 +119,7 @@ export default function NewApplicationPage() {
                 <span className="badge badge-green" style={{ fontSize: 12 }}>
                   {idx + 1}. {step}
                 </span>
-                {idx < routeSteps.length - 1 && <span style={{ color: "#86efac" }}>→</span>}
+                {idx < routeSteps.length - 1 && <span style={{ color: "var(--muted)", fontFamily: "var(--font-mono)" }}>-&gt;</span>}
               </span>
             ))}
           </div>
@@ -208,7 +208,7 @@ export default function NewApplicationPage() {
             Cancel
           </Link>
           <button type="submit" disabled={submitting} className="btn btn-primary" style={{ minWidth: 160 }}>
-            {submitting ? "Submitting Application..." : "🚀 Submit Application"}
+            {submitting ? "Submitting Application..." : "[+] Submit Application"}
           </button>
         </div>
       </form>

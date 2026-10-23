@@ -74,7 +74,7 @@ export function EvcActionForm({
           <h1 className="page-title">Expert Visit Committee (EVC) Action</h1>
           <p className="page-subtitle">Application: {evc.application.refNo} • {evc.application.institution.name}</p>
         </div>
-        <Link href="/evc" className="btn btn-secondary">← Back to EVC Queue</Link>
+        <Link href="/evc" className="btn btn-secondary">&lt;- Back to EVC Queue</Link>
       </div>
 
       {error && (
@@ -109,7 +109,7 @@ export function EvcActionForm({
       {/* Schedule Form */}
       {evc.status === "QUEUED" && (
         <form onSubmit={handleSchedule} className="card">
-          <div className="card-header"><span className="card-title">📅 Schedule Physical / Virtual Inspection</span></div>
+          <div className="card-header"><span className="card-title">[SCHEDULE] Schedule Physical / Virtual Inspection</span></div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Scheduled Inspection Date *</label>
             <input
@@ -148,7 +148,7 @@ export function EvcActionForm({
           </div>
 
           <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: "100%" }}>
-            {loading ? "Scheduling..." : "✅ Confirm EVC Schedule & Advance to EVC_SCHEDULED"}
+            {loading ? "Scheduling..." : "[+] Confirm EVC Schedule & Advance to EVC_SCHEDULED"}
           </button>
         </form>
       )}
@@ -156,7 +156,7 @@ export function EvcActionForm({
       {/* Complete Visit Form */}
       {evc.status === "SCHEDULED" && (
         <form onSubmit={handleComplete} className="card">
-          <div className="card-header"><span className="card-title">📝 Submit EVC Inspection Report</span></div>
+          <div className="card-header"><span className="card-title">[REPORT] Submit EVC Inspection Report</span></div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Report Reference Number / Upload Docket *</label>
             <input
@@ -174,7 +174,7 @@ export function EvcActionForm({
           </p>
 
           <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: "100%" }}>
-            {loading ? "Submitting..." : "🚀 Mark Completed & Advance to EVC Report Review"}
+            {loading ? "Submitting..." : "[>] Mark Completed & Advance to EVC Report Review"}
           </button>
         </form>
       )}
@@ -182,7 +182,7 @@ export function EvcActionForm({
       {/* Completed State */}
       {evc.status === "COMPLETED" && (
         <div className="card" style={{ background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
-          <h3 style={{ margin: "0 0 8px 0", color: "#166534" }}>✅ EVC Inspection Completed</h3>
+          <h3 style={{ margin: "0 0 8px 0", color: "#166534" }}>[OK] EVC Inspection Completed</h3>
           <p style={{ fontSize: 13, color: "#15803d", margin: "0 0 12px 0" }}>
             The committee report reference has been recorded as <strong>{evc.reportRef}</strong> on {evc.completedAt ? new Date(evc.completedAt).toLocaleDateString() : "recently"}.
           </p>
