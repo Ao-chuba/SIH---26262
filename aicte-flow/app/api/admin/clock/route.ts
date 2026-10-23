@@ -11,9 +11,11 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
 
   let newDate: Date;
-  if (body.reset) {
+  let reset = false;
+  if (body.reset === true || body.simulatedNow === null) {
     await setSimulatedNow(null);
     newDate = new Date();
+    reset = true;
   } else if (body.addDays) {
     newDate = await addDaysToSimulated(Number(body.addDays));
   } else if (body.simulatedNow) {
@@ -26,11 +28,17 @@ export async function POST(request: NextRequest) {
   await appendAudit({
     actorId: user.id, actorRole: user.role, action: "CLOCK_CHANGED",
     entityType: "SystemClock", entityId: "1",
-    payload: { newDate: newDate.toISOString(), reset: !!body.reset, addDays: body.addDays },
+    payload: { newDate: newDate.toISOString(), reset, addDays: body.addDays },
   });
 
-  // Run tick after clock change
   const tickSummary = await tick(newDate);
 
-  return NextResponse.json({ simulatedNow: body.reset ? null : newDate.toISOString(), tick: tickSummary });
+  return NextResponse.json({
+    simulatedNow: reset ? null : newDate.toISOString(),
+    tick: tickSummary,
+    remindersFired: tickSummary.remindersFired,
+    overdueMarked: tickSummary.overdueMarked,
+    escalations: tickSummary.escalations,
+    tickedAt: tickSummary.tickedAt,
+  });
 }

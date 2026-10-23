@@ -15,6 +15,10 @@ export default async function AuditPage() {
     take: 100,
   });
 
+  const tamperBackup = await prisma.ruleConfig.findUnique({
+    where: { key: "AUDIT_TAMPER_DEMO_BACKUP" },
+  });
+
   return (
     <div>
       <div className="page-header">
@@ -33,7 +37,11 @@ export default async function AuditPage() {
         <strong>🔒 Immutability Guarantee:</strong> Every audit entry is cryptographically linked to the previous entry via SHA-256 hash chaining: <code>hash = sha256(prevHash + ts + actor + action + entity + payload)</code>. Any database modification or row deletion invalidates the chain.
       </div>
 
-      <AuditTable initialLogs={logs.map(l => ({ ...l, ts: l.ts.toISOString() }))} />
+      <AuditTable
+        initialLogs={logs.map((l) => ({ ...l, ts: l.ts.toISOString() }))}
+        isAdmin={user.role === "ADMIN"}
+        tamperActive={!!tamperBackup}
+      />
     </div>
   );
 }

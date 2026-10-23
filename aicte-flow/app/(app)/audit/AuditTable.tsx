@@ -15,9 +15,20 @@ type LogEntry = {
   hash: string;
 };
 
-export function AuditTable({ initialLogs }: { initialLogs: LogEntry[] }) {
+export function AuditTable({
+  initialLogs,
+  isAdmin = false,
+  tamperActive = false,
+}: {
+  initialLogs: LogEntry[];
+  isAdmin?: boolean;
+  tamperActive?: boolean;
+}) {
   const [filterAction, setFilterAction] = useState("");
   const [expandedSeq, setExpandedSeq] = useState<number | null>(null);
+  const [tamperOn, setTamperOn] = useState(tamperActive);
+  const [tamperMsg, setTamperMsg] = useState<string | null>(null);
+  const [tamperBusy, setTamperBusy] = useState(false);
   const [verifyStatus, setVerifyStatus] = useState<{
     running: boolean;
     result?: { ok: boolean; count?: number; brokenAtSeq?: number; message?: string };
@@ -34,6 +45,27 @@ export function AuditTable({ initialLogs }: { initialLogs: LogEntry[] }) {
         running: false,
         result: { ok: false, message: "Verification failed to complete" },
       });
+    }
+  }
+
+  async function handleTamper(action: "simulate" | "restore") {
+    setTamperBusy(true);
+    setTamperMsg(null);
+    try {
+      const res = await fetch("/api/audit/tamper", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Tamper action failed");
+      setTamperOn(action === "simulate");
+      setTamperMsg(data.message);
+      setVerifyStatus({ running: false });
+    } catch (e: unknown) {
+      setTamperMsg(e instanceof Error ? e.message : "Tamper action failed");
+    } finally {
+      setTamperBusy(false);
     }
   }
 
@@ -60,15 +92,42 @@ export function AuditTable({ initialLogs }: { initialLogs: LogEntry[] }) {
           />
         </div>
 
-        <button
-          onClick={handleVerify}
-          disabled={verifyStatus.running}
-          className="btn btn-primary"
-          style={{ background: "#0f766e" }}
-        >
-          {verifyStatus.running ? "Verifying SHA-256 chain..." : "🛡️ Verify Chain Integrity"}
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => handleTamper("simulate")}
+                disabled={tamperBusy || tamperOn}
+                className="btn btn-secondary"
+                title="Demo only: mutate one payload without updating its hash"
+              >
+                🧪 Simulate Tamper
+              </button>
+              <button
+                onClick={() => handleTamper("restore")}
+                disabled={tamperBusy || !tamperOn}
+                className="btn btn-secondary"
+              >
+                ↩️ Restore
+              </button>
+            </>
+          )}
+          <button
+            onClick={handleVerify}
+            disabled={verifyStatus.running}
+            className="btn btn-primary"
+            style={{ background: "#0f766e" }}
+          >
+            {verifyStatus.running ? "Verifying SHA-256 chain..." : "🛡️ Verify Chain Integrity"}
+          </button>
+        </div>
       </div>
+
+      {tamperMsg && (
+        <div style={{ padding: "10px 14px", marginBottom: 12, borderRadius: 8, background: "#fff7ed", border: "1px solid #fed7aa", color: "#9a3412", fontSize: 13 }}>
+          {tamperMsg}
+        </div>
+      )}
 
       {verifyStatus.result && (
         <div

@@ -510,11 +510,11 @@ Phases 1–9 are done on `main`. Build the items below in order. Do not recreate
 
 ### Build checklist
 
-- [ ] **19.1 APH Compliance Snapshot** — Add `metricsJson` (String/JSON) on `Application`: `{ studentIntake, facultyCount, requiredFaculty, labAreaSqm, requiredLabAreaSqm, professors?, associates?, assistants? }`. Seed realistic values on golden demos + a sample of apps. On `/applications/[id]`, render **APH Norms Compliance Check** with pass/fail for ratio 1:20, intake multiple 30/60, cadre 1:2:6 (if counts present), lab area vs required. Label: assistive for scrutiny; not a statutory decision.
-- [ ] **19.2 Dual-Clock Accountability Bar** — From `ApplicationStage` (+ RETURNED institution windows), show on app detail header: **AICTE processing days** vs **Institution deficiency-response days**. Simple split bar + numbers.
-- [ ] **19.3 Audit Tamper Demo** — Admin-only on `/audit`: **Simulate Tamper** (mutate one `AuditLog.payload` without updating `hash`) so Verify shows ❌ Broken at seq N; **Restore** repairs it. Keep chain verify as today.
-- [ ] **19.4 UI distinction (light GovTech)** — Keep light mode (`#F8FAFC` / navy primary). Enrich existing stepper with plain-English stage subtitles (no raw enums). Battery-style validity bars on `/documents` (and undertakings countdown if easy). After clock +1/+7/+30, show a **Simulation Impact Summary** (reminders / overdue / escalations with links), not only a toast. Subtle role accent on persona/switcher so judges see whose screen it is.
-- [ ] **19.5 Docs sync** — Refresh `aicte-flow/DEMO_SCRIPT.md` demo beats for 19.1–19.4; light touch on `aicte-flow/README.md` feature list; tick checkboxes here.
+- [x] **19.1 APH Compliance Snapshot** — `metricsJson` on `Application`; seed + `AphNormsCard` on `/applications/[id]` (1:20, intake 30/60, cadre 1:2:6, lab area). Assistive only.
+- [x] **19.2 Dual-Clock Accountability Bar** — Officer vs institution days on app detail from stage history / RETURNED windows.
+- [x] **19.3 Audit Tamper Demo** — Admin **Simulate Tamper** / **Restore** on `/audit` + `/api/audit/tamper`.
+- [x] **19.4 UI distinction (light GovTech)** — Stage subtitles, document validity bars, Simulation Impact Summary on Admin clock, role accent stripe + persona badge.
+- [x] **19.5 Docs sync** — `DEMO_SCRIPT.md` + product README notes for §19 features.
 
 ### Out of scope for this pass
 
