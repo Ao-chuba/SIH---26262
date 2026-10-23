@@ -102,9 +102,14 @@
 
 ---
 
-## Act add-ons (§19 — ship with the live demo)
+## Act add-ons (§19 + PS-gap distinction — ship with the live demo)
 
-1. **APH Norms card** — Open `DEMO-NEW-INST-001`: show pass/fail for 1:20 ratio / intake / cadre / lab. Say: *"assists the officer; does not decide."*
-2. **Dual-Clock bar** — Same app: officer processing days vs institution deficiency delay after the seeded return.
-3. **Clock +7 / +30** (Admin): show **Simulation Impact Summary** cards linking to Notifications / Undertakings / Escalations, then Delivery Log.
-4. **Audit** (Admin): Verify ✅ → **Simulate Tamper** → Verify ❌ → **Restore** → Verify ✅.
+*Beat shallow competitor demos (intake gate, dual-clock, hearing path, health, tamper proof).*
+
+1. **Intake hard-block (source gate)** — Institution → `/applications/new`, type intake **73**. Show live **[BLOCKED]** banner; submit disabled. Change to **60** → gate passes. Say: *"Clean input at source — zero wasted RO cycles."*
+2. **Compliance Health Score** — Institution dashboard: show **0–100** score (APH + docs + undertakings). RO dashboard: region list, lowest first.
+3. **APH Norms card + deficiency prefill** — Open a deficient app: clause labels + score; click **[APH] Prefill Deficiencies** → edit → save. Say: *"assists the officer; does not decide."*
+4. **Dual-Clock bar** — Same app: officer processing days vs institution deficiency delay after a return.
+5. **Refer to SAC/SHC** — As RO on Scrutiny/EVC Report: **Refer to SAC/SHC** with reason → route stepper gains hearing stage; audit `REFERRED_SAC_SHC`.
+6. **Clock +7 / +30** (Admin): **Simulation Impact Summary** → Notifications / Escalations / Delivery Log.
+7. **Audit** (Admin): Verify → **Simulate Tamper** → Verify fails → **Restore** → Verify passes.
