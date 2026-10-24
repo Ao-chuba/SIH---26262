@@ -211,6 +211,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <span>
             Workflow routing and APH checks assist scrutiny; final approvals rest with the competent authority.
           </span>
+          <span style={{ marginLeft: 8, opacity: 0.9 }}>
+            · Demo mode: cookie role switch · Email/SMS simulated in delivery log
+          </span>
         </footer>
       </main>
     </div>
