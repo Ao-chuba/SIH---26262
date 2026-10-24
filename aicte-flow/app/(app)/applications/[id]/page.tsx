@@ -208,6 +208,7 @@ export default async function ApplicationDetailPage({
         },
       },
       assignedTo: { select: { name: true, email: true, role: true } },
+      decidedBy: { select: { name: true, role: true } },
       stages: { orderBy: { enteredAt: "asc" }, include: { enteredBy: { select: { name: true } } } },
       observations: { orderBy: { createdAt: "asc" }, include: { author: { select: { name: true, role: true } } } },
       deadlineItems: {
@@ -307,6 +308,41 @@ export default async function ApplicationDetailPage({
       </div>
 
       <DualClockBar officerDays={dual.officerDays} institutionDays={dual.institutionDays} />
+
+      {app.decision && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-header" style={{ marginBottom: 8 }}>
+            <span className="card-title">Competent Authority Decision</span>
+            <span
+              className={`badge ${
+                app.decision === "REJECTED"
+                  ? "badge-red"
+                  : app.decision === "APPROVED_WITH_CONDITIONS"
+                    ? "badge-amber"
+                    : "badge-green"
+              }`}
+            >
+              {formatStatus(app.decision)}
+            </span>
+          </div>
+          <p style={{ fontSize: 13.5, color: "var(--forest)", marginBottom: 8, whiteSpace: "pre-wrap" }}>
+            {app.decisionRemarks ?? "—"}
+          </p>
+          <div style={{ fontSize: 12.5, color: "var(--forest-muted)" }}>
+            Recorded by <strong style={{ color: "var(--forest)" }}>{app.decidedBy?.name ?? "Bureau"}</strong>
+            {app.decidedAt && (
+              <>
+                {" "}
+                on{" "}
+                <strong style={{ color: "var(--forest)" }}>
+                  {new Date(app.decidedAt).toLocaleString("en-IN")}
+                </strong>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <AphNormsCard metricsJson={app.metricsJson} />
 
       <ActionPanel

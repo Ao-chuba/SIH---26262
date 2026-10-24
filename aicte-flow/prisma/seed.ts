@@ -286,6 +286,14 @@ async function main() {
         metricsJson: JSON.stringify(metrics),
         submittedAt,
         stageEnteredAt,
+        ...(opts.status === "DECIDED"
+          ? {
+              decision: "APPROVED",
+              decisionRemarks: "Seeded competent-authority approval for demo / reports.",
+              decidedAt: DEMO_TODAY,
+              decidedById: opts.assignedToId,
+            }
+          : {}),
       },
     });
 

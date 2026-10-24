@@ -6,6 +6,14 @@ import { STAGES } from "@/config/rules";
 import { formatAppType, formatDeadlineKind, formatOutcome, formatRole, formatRoute, formatStatus } from "@/lib/format";
 import { canViewApplication, requireAuth } from "@/lib/auth";
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireAuth().catch(() => null);
@@ -143,6 +151,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       <tr><td>Workflow Route</td><td>${formatRoute(app.route)}</td></tr>
       <tr><td>Current Stage</td><td><strong>${STAGES[app.currentStageKey]?.label ?? app.currentStageKey}</strong></td></tr>
       <tr><td>Status</td><td><strong>${formatStatus(app.status)}</strong></td></tr>
+      <tr><td>Decision</td><td><strong>${app.decision ? formatStatus(app.decision) : "—"}</strong></td></tr>
+      <tr><td>Decision Remarks</td><td>${app.decisionRemarks ? escapeHtml(app.decisionRemarks) : "—"}</td></tr>
       <tr><td>Assigned Officer</td><td>${app.assignedTo?.name ?? "Unassigned"} (${formatRole(app.assignedTo?.role)})</td></tr>
       <tr><td>Submitted Date</td><td>${new Date(app.submittedAt).toLocaleDateString()}</td></tr>
     </table>
