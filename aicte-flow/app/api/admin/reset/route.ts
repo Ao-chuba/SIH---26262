@@ -25,7 +25,9 @@ function runSeed(): Promise<void> {
       "PROGRAMFILES",
       "CommonProgramFiles",
     ];
-    const env: NodeJS.ProcessEnv = {};
+    const env: NodeJS.ProcessEnv = {
+      NODE_ENV: process.env.NODE_ENV ?? "development",
+    };
     for (const key of keep) {
       if (process.env[key]) env[key] = process.env[key];
     }
