@@ -108,14 +108,25 @@ export function UndertakingTable({
               Attach compliance proof. The undertaking closes once verified by the Regional Officer.
             </p>
             <div className="form-group">
-              <label className="form-label">Document Filename *</label>
+              <label className="form-label">Attach Compliance Proof (.pdf) *</label>
               <input
-                type="text"
+                type="file"
+                accept=".pdf,application/pdf"
                 className="form-input"
-                value={evidenceName}
-                onChange={(e) => setEvidenceName(e.target.value)}
-                required
+                style={{ padding: "8px 12px", background: "#fff", marginBottom: 6 }}
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  const fd = new FormData();
+                  fd.append("file", f);
+                  const r = await fetch("/api/upload", { method: "POST", body: fd });
+                  const d = await r.json();
+                  if (r.ok) setEvidenceName(d.fileName || f.name);
+                }}
               />
+              <small style={{ color: "var(--forest-muted)", fontSize: 12 }}>
+                Selected: <strong>{evidenceName}</strong>
+              </small>
             </div>
             <div className="form-group">
               <label className="form-label">Notes</label>

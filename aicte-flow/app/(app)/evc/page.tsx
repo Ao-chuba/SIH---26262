@@ -14,11 +14,19 @@ export default async function EvcPage() {
 
   const now = await getNow();
 
+  if (user.role === "SAC_SHC_MEMBER") redirect("/dashboard");
+
+  const regionScope =
+    user.role === "REGIONAL_OFFICER" ? { application: { regionId: user.regionId! } } : {};
+  const canSchedule = user.role === "REGIONAL_OFFICER" || user.role === "ADMIN";
+
   const [queued, scheduled, completed] = await Promise.all([
     prisma.evcVisit.findMany({
       where: {
         status: "QUEUED",
-        ...(user.role === "REGIONAL_OFFICER" ? { application: { regionId: user.regionId! } } : {}),
+        ...regionScope,
+        // EVC members do not schedule — only see assigned/unassigned queue as read-only context
+        ...(user.role === "EVC_COMMITTEE" ? { id: "__none__" } : {}),
       },
       include: { application: { include: { institution: { select: { name: true, type: true } } } } },
       orderBy: { queuedAt: "asc" },
@@ -26,7 +34,8 @@ export default async function EvcPage() {
     prisma.evcVisit.findMany({
       where: {
         status: "SCHEDULED",
-        ...(user.role === "REGIONAL_OFFICER" ? { application: { regionId: user.regionId! } } : {}),
+        ...regionScope,
+        ...(user.role === "EVC_COMMITTEE" ? { committeeId: user.id } : {}),
       },
       include: { application: { include: { institution: { select: { name: true, type: true } } } } },
       orderBy: { scheduledFor: "asc" },
@@ -34,7 +43,8 @@ export default async function EvcPage() {
     prisma.evcVisit.findMany({
       where: {
         status: "COMPLETED",
-        ...(user.role === "REGIONAL_OFFICER" ? { application: { regionId: user.regionId! } } : {}),
+        ...regionScope,
+        ...(user.role === "EVC_COMMITTEE" ? { committeeId: user.id } : {}),
       },
       include: { application: { include: { institution: { select: { name: true } } } } },
       orderBy: { completedAt: "desc" },
@@ -54,11 +64,13 @@ export default async function EvcPage() {
       </div>
 
       <div className="kpi-grid" style={{ marginBottom: 24 }}>
-        <div className="kpi-card">
-          <div className="kpi-label">Queue</div>
-          <div className="kpi-value">{queued.length}</div>
-          <div className="kpi-sub">Awaiting schedule (5d SLA)</div>
-        </div>
+        {user.role !== "EVC_COMMITTEE" && (
+          <div className="kpi-card">
+            <div className="kpi-label">Queue</div>
+            <div className="kpi-value">{queued.length}</div>
+            <div className="kpi-sub">Awaiting schedule (5d SLA)</div>
+          </div>
+        )}
         <div className="kpi-card amber">
           <div className="kpi-label">Scheduled</div>
           <div className="kpi-value" style={{ color: "var(--amber)" }}>{scheduled.length}</div>
@@ -76,69 +88,75 @@ export default async function EvcPage() {
         </div>
       </div>
 
-      {/* EVC Queue */}
-      <div className="card" style={{ marginBottom: 18 }}>
-        <div className="card-header">
-          <span className="card-title">Awaiting Scheduling</span>
-          <span className="badge badge-blue">{queued.length}</span>
-        </div>
-        <div style={{ overflowX: "auto" }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Application</th>
-                <th>Institution</th>
-                <th>Discipline</th>
-                <th>Category</th>
-                <th>Queued On</th>
-                <th>Waiting</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {queued.map((v) => {
-                const daysWaiting = differenceInCalendarDays(now, v.queuedAt);
-                return (
-                  <tr key={v.id}>
-                    <td>
-                      <Link href={`/applications/${v.applicationId}`} className="table-link font-mono">
-                        {v.application.refNo}
-                      </Link>
-                    </td>
-                    <td style={{ fontWeight: 700 }}>{v.application.institution.name}</td>
-                    <td><span className="badge badge-blue">{v.application.institution.type}</span></td>
-                    <td>
-                      {v.isNewInstitution ? (
-                        <span className="badge badge-red">New (30d SLA)</span>
-                      ) : (
-                        <span className="badge badge-gray">Existing</span>
-                      )}
-                    </td>
-                    <td>{new Date(v.queuedAt).toLocaleDateString()}</td>
-                    <td>
-                      <span className={`sla-chip ${daysWaiting > 5 ? "red" : daysWaiting > 3 ? "amber" : "green"}`}>
-                        {daysWaiting}d
-                      </span>
-                    </td>
-                    <td>
-                      <Link href={`/evc/${v.id}`} className="btn btn-primary btn-sm">
-                        Schedule
-                      </Link>
+      {/* EVC Queue — only shown to RO / Bureau / Admin */}
+      {user.role !== "EVC_COMMITTEE" && (
+        <div className="card" style={{ marginBottom: 18 }}>
+          <div className="card-header">
+            <span className="card-title">Awaiting Scheduling</span>
+            <span className="badge badge-blue">{queued.length}</span>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Application</th>
+                  <th>Institution</th>
+                  <th>Discipline</th>
+                  <th>Category</th>
+                  <th>Queued On</th>
+                  <th>Waiting</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {queued.map((v) => {
+                  const daysWaiting = differenceInCalendarDays(now, v.queuedAt);
+                  return (
+                    <tr key={v.id}>
+                      <td>
+                        <Link href={`/applications/${v.applicationId}`} className="table-link font-mono">
+                          {v.application.refNo}
+                        </Link>
+                      </td>
+                      <td style={{ fontWeight: 700 }}>{v.application.institution.name}</td>
+                      <td><span className="badge badge-blue">{v.application.institution.type}</span></td>
+                      <td>
+                        {v.isNewInstitution ? (
+                          <span className="badge badge-red">New (30d SLA)</span>
+                        ) : (
+                          <span className="badge badge-gray">Existing</span>
+                        )}
+                      </td>
+                      <td>{new Date(v.queuedAt).toLocaleDateString()}</td>
+                      <td>
+                        <span className={`sla-chip ${daysWaiting > 5 ? "red" : daysWaiting > 3 ? "amber" : "green"}`}>
+                          {daysWaiting}d
+                        </span>
+                      </td>
+                      <td>
+                        {canSchedule ? (
+                          <Link href={`/evc/${v.id}`} className="btn btn-primary btn-sm">
+                            Schedule
+                          </Link>
+                        ) : (
+                          <span className="badge badge-gray">RO schedules</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {queued.length === 0 && (
+                  <tr>
+                    <td colSpan={7}>
+                      <div className="empty-state"><p>No visits waiting in queue.</p></div>
                     </td>
                   </tr>
-                );
-              })}
-              {queued.length === 0 && (
-                <tr>
-                  <td colSpan={7}>
-                    <div className="empty-state"><p>No visits waiting in queue.</p></div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Scheduled Visits */}
       <div className="card" style={{ marginBottom: 18 }}>
@@ -180,13 +198,26 @@ export default async function EvcPage() {
                       {v.isNewInstitution ? <span className="badge badge-red">New</span> : <span className="badge badge-gray">Existing</span>}
                     </td>
                     <td>
-                      <Link href={`/evc/${v.id}`} className="btn btn-secondary btn-sm">
-                        Submit Report
-                      </Link>
+                      {user.role === "EVC_COMMITTEE" || user.role === "ADMIN" ? (
+                        <Link href={`/evc/${v.id}`} className="btn btn-primary btn-sm">
+                          Submit Report
+                        </Link>
+                      ) : (
+                        <Link href={`/evc/${v.id}`} className="btn btn-secondary btn-sm">
+                          View Visit
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 );
               })}
+              {scheduled.length === 0 && (
+                <tr>
+                  <td colSpan={6}>
+                    <div className="empty-state"><p>No scheduled inspections.</p></div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
