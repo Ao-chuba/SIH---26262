@@ -156,7 +156,27 @@ export default async function LoginPage() {
               marginBottom: 16,
             }}
           >
-            AICTE APPROVAL &amp; COMPLIANCE PORTAL
+            SIH26262 · DEMO MODE
+          </div>
+
+          <div
+            style={{
+              textAlign: "left",
+              maxWidth: 640,
+              margin: "0 auto 20px",
+              padding: "12px 16px",
+              borderRadius: 14,
+              background: "var(--highlighter-yellow-soft)",
+              border: "1.5px solid var(--forest)",
+              fontSize: 12.5,
+              color: "var(--forest)",
+              lineHeight: 1.5,
+            }}
+          >
+            <strong style={{ fontWeight: 800 }}>Evaluation / demo environment.</strong> Role entry uses a
+            cookie-based account switcher (no passwords). Email and SMS alerts are written to an in-app
+            delivery log — they are not sent through NIC / SMTP gateways. Production path: Jan Parichay SSO
+            and official notification relays (see README roadmap).
           </div>
 
           <h1
