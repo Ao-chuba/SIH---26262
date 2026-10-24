@@ -11,6 +11,7 @@ import {
   canReturnApplication,
 } from "../auth";
 import { ROUTES, STAGES, APP_TYPE_ROUTE_MAP, EVC_NEW_INSTITUTION_DAYS, RESPONSE_WINDOW_DAYS } from "../../config/rules";
+import { getNextStage, getRouteStages } from "./routes";
 import type { User, Application } from "@prisma/client";
 
 type RouteKey = keyof typeof ROUTES;
@@ -31,18 +32,6 @@ async function getConfiguredEvcNewDays(): Promise<number> {
     if (rc) return Number(JSON.parse(rc.value)) || EVC_NEW_INSTITUTION_DAYS;
   } catch {}
   return EVC_NEW_INSTITUTION_DAYS;
-}
-
-function getRouteStages(route: string): readonly string[] {
-  return (ROUTES as Record<string, readonly string[]>)[route] ?? [];
-}
-
-function getNextStage(route: string, currentStage: string): string | null {
-  const stages = getRouteStages(route);
-  const normalized = currentStage === "RE_SCRUTINY" ? "SCRUTINY" : currentStage;
-  const idx = stages.indexOf(normalized);
-  if (idx === -1 || idx >= stages.length - 1) return null;
-  return stages[idx + 1];
 }
 
 /**
