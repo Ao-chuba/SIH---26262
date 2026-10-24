@@ -38,29 +38,28 @@ export default async function DocumentsPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Documents & Lease Validity</h1>
-          <p className="page-subtitle">{documents.length} registered compliance document(s)</p>
+          <h1 className="page-title">Documents &amp; Leases</h1>
+          <p className="page-subtitle">{documents.length} registered document(s)</p>
         </div>
       </div>
 
       <div className="kpi-grid" style={{ marginBottom: 24 }}>
         <div className="kpi-card amber">
-          <div className="kpi-label">Expiring ≤90 days</div>
-          <div className="kpi-value" style={{ color: "#f59e0b" }}>{expiring90}</div>
+          <div className="kpi-label">Expiring ≤90 Days</div>
+          <div className="kpi-value" style={{ color: "var(--amber)" }}>{expiring90}</div>
         </div>
         <div className="kpi-card red">
           <div className="kpi-label">Expired</div>
-          <div className="kpi-value" style={{ color: "#ef4444" }}>{expired}</div>
+          <div className="kpi-value" style={{ color: "var(--red)" }}>{expired}</div>
         </div>
         <div className="kpi-card amber">
-          <div className="kpi-label">Renewal Pending</div>
-          <div className="kpi-value" style={{ color: "#f59e0b" }}>{renewalPending}</div>
-          <div className="kpi-sub">Awaiting verification</div>
+          <div className="kpi-label">Renewal Submitted</div>
+          <div className="kpi-value" style={{ color: "var(--amber)" }}>{renewalPending}</div>
         </div>
         <div className="kpi-card green">
-          <div className="kpi-label">Valid</div>
-          <div className="kpi-value" style={{ color: "#22c55e" }}>
-            {documents.length - expiring90 - expired - renewalPending}
+          <div className="kpi-label">Valid (&gt;90 Days)</div>
+          <div className="kpi-value" style={{ color: "var(--green)" }}>
+            {Math.max(0, documents.length - expiring90 - expired - renewalPending)}
           </div>
         </div>
       </div>

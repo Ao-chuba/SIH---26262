@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getNow } from "@/lib/clock";
 import { differenceInCalendarDays } from "date-fns";
-import { ROUTES, STAGES } from "@/config/rules";
+import { STAGES } from "@/config/rules";
+import { formatAppType, formatDeadlineKind, formatOutcome, formatRole, formatRoute, formatStatus } from "@/lib/format";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -20,98 +22,190 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   if (!app) return new NextResponse("Not found", { status: 404 });
 
-  const now = new Date();
-  const routeStages = ROUTES[app.route as keyof typeof ROUTES] ?? [];
+  const now = await getNow();
 
   const html = `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <title>Case Summary – ${app.refNo}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <style>
-    body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 20px; color: #1a202c; }
-    h1 { font-size: 22px; color: #1e3a5f; margin-bottom: 4px; }
-    .disclaimer { background: #fffbeb; border: 1px solid #fbbf24; padding: 12px 16px; border-radius: 6px; font-size: 12px; color: #7c5c00; margin-bottom: 24px; }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background: #FAF8F5;
+      color: #14281D;
+      max-width: 920px;
+      margin: 32px auto;
+      padding: 28px;
+    }
+    .sheet {
+      background: #FFFFFF;
+      border: 1.5px solid #14281D;
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 6px 6px 0px #14281D;
+    }
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1.5px solid #E5E0D5;
+      padding-bottom: 18px;
+      margin-bottom: 20px;
+      gap: 16px;
+    }
+    h1 { font-size: 24px; font-weight: 800; color: #14281D; margin: 0 0 4px; letter-spacing: -0.02em; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .disclaimer {
+      background: #FFFDF4;
+      border: 1.5px solid #E5D59B;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 12px;
+      color: #5C4813;
+      margin-bottom: 24px;
+    }
     table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-    th { background: #f8fafc; text-align: left; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; border-bottom: 1px solid #e2e8f0; }
-    td { padding: 9px 12px; border-bottom: 1px solid #f0f4f8; font-size: 13px; }
-    h2 { font-size: 15px; color: #1e3a5f; margin: 20px 0 10px; border-bottom: 2px solid #1e3a5f; padding-bottom: 4px; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-    .badge-blue { background: #dbeafe; color: #1d4ed8; }
-    .badge-green { background: #dcfce7; color: #15803d; }
-    .badge-red { background: #fee2e2; color: #b91c1c; }
-    @media print { .no-print { display: none; } }
+    th {
+      background: #FAF8F5;
+      text-align: left;
+      padding: 10px 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #4F6155;
+      border-bottom: 1.5px solid #E5E0D5;
+    }
+    td { padding: 10px 12px; border-bottom: 1px solid #E5E0D5; font-size: 13px; }
+    h2 {
+      font-size: 15px;
+      font-weight: 800;
+      color: #14281D;
+      margin: 24px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 1.5px solid #14281D;
+    }
+    .pill {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      background: #E6F564;
+      border: 1px solid #14281D;
+    }
+    @media print {
+      body { background: #FFFFFF; margin: 0; padding: 0; }
+      .sheet { box-shadow: none; border: 1px solid #cbd5e1; }
+      .no-print { display: none; }
+    }
   </style>
 </head>
 <body>
-  <div class="disclaimer">
-    [!] <strong>System-generated summary to support, not replace, officer verification.</strong>
-    This document is auto-generated and should be used only as a reference aid. All statutory scrutiny, verification and decisions must be made by the competent authority.
+  <div class="sheet">
+    <div class="header-row">
+      <div>
+        <span class="pill">AICTE FLOW • SIH-26262 DOCKET</span>
+        <h1 style="margin-top: 10px;">Case Summary: <span class="mono">${app.refNo}</span></h1>
+        <p style="color: #4F6155; font-size: 12.5px; margin: 4px 0 0;">
+          Generated: ${now.toLocaleString()} | Official Scrutiny &amp; Compliance Record
+        </p>
+      </div>
+      <button class="no-print mono" onclick="window.print()" style="background: #14281D; color: #FAF8F5; border: none; padding: 10px 20px; border-radius: 9999px; cursor: pointer; font-size: 12px; font-weight: 700;">
+        Print / Save PDF
+      </button>
+    </div>
+
+    <div class="disclaimer">
+      <strong>Statutory Safeguard:</strong>
+      System-generated summary to support officer verification. All statutory scrutiny, inspection, and final approval decisions rest with the competent authority.
+    </div>
+
+    <h2>1. Application &amp; Institution Particulars</h2>
+    <table>
+      <tr><th>Field</th><th>Recorded Value</th></tr>
+      <tr><td>Reference Number</td><td class="mono"><strong>${app.refNo}</strong></td></tr>
+      <tr><td>Institution</td><td><strong>${app.institution.name}</strong> (AICTE ID: ${app.institution.aicteId})</td></tr>
+      <tr><td>State / Discipline</td><td>${app.institution.state} · ${app.institution.type}</td></tr>
+      <tr><td>Application Type</td><td>${formatAppType(app.applicationType)}</td></tr>
+      <tr><td>Workflow Route</td><td>${formatRoute(app.route)}</td></tr>
+      <tr><td>Current Stage</td><td><strong>${STAGES[app.currentStageKey]?.label ?? app.currentStageKey}</strong></td></tr>
+      <tr><td>Status</td><td><strong>${formatStatus(app.status)}</strong></td></tr>
+      <tr><td>Assigned Officer</td><td>${app.assignedTo?.name ?? "Unassigned"} (${formatRole(app.assignedTo?.role)})</td></tr>
+      <tr><td>Submitted Date</td><td>${new Date(app.submittedAt).toLocaleDateString()}</td></tr>
+    </table>
+
+    <h2>2. Stage Progression History</h2>
+    <table>
+      <tr><th>Stage</th><th>Entered</th><th>Exited</th><th>Duration</th><th>Outcome</th></tr>
+      ${app.stages
+        .map(
+          (s) => `
+        <tr>
+          <td><strong>${STAGES[s.stageKey]?.label ?? s.stageKey}</strong></td>
+          <td>${new Date(s.enteredAt).toLocaleDateString()}</td>
+          <td>${s.exitedAt ? new Date(s.exitedAt).toLocaleDateString() : "Active"}</td>
+          <td>${s.exitedAt ? `${Math.max(1, differenceInCalendarDays(s.exitedAt, s.enteredAt))} day(s)` : "In progress"}</td>
+          <td>${s.outcome ? formatOutcome(s.outcome) : "Open"}</td>
+        </tr>
+      `
+        )
+        .join("")}
+    </table>
+
+    <h2>3. Scrutiny Observations &amp; Deficiency Replies (${app.observations.length})</h2>
+    ${
+      app.observations.length === 0
+        ? "<p style='font-size:13px;color:#4F6155;'>No observations recorded.</p>"
+        : `
+    <table>
+      <tr><th>Category</th><th>Author</th><th>Date</th><th>Observation / Reply</th></tr>
+      ${app.observations
+        .map(
+          (o) => `
+        <tr>
+          <td><strong>${formatStatus(o.kind)}</strong></td>
+          <td>${o.author.name}</td>
+          <td>${new Date(o.createdAt).toLocaleDateString()}</td>
+          <td>${o.text}</td>
+        </tr>
+      `
+        )
+        .join("")}
+    </table>
+    `
+    }
+
+    <h2>4. Open SLA Deadlines</h2>
+    ${
+      app.deadlineItems.length === 0
+        ? "<p style='font-size:13px;color:#4F6155;'>No open deadlines.</p>"
+        : `
+    <table>
+      <tr><th>Category</th><th>Title</th><th>Due Date</th><th>Escalation</th></tr>
+      ${app.deadlineItems
+        .map(
+          (d) => `
+        <tr>
+          <td>${formatDeadlineKind(d.kind)}</td>
+          <td>${d.title}</td>
+          <td>${new Date(d.dueAt).toLocaleDateString()}</td>
+          <td>${d.escalationLevel > 0 ? `Escalated L${d.escalationLevel}` : "None"}</td>
+        </tr>
+      `
+        )
+        .join("")}
+    </table>
+    `
+    }
   </div>
-
-  <h1>Case Summary: ${app.refNo}</h1>
-  <p style="color: #64748b; font-size: 13px; margin-bottom: 24px;">Generated: ${now.toLocaleString()} | AICTE Approval Workflow System</p>
-
-  <h2>Application Details</h2>
-  <table>
-    <tr><th>Field</th><th>Value</th></tr>
-    <tr><td>Reference Number</td><td><strong>${app.refNo}</strong></td></tr>
-    <tr><td>Institution</td><td>${app.institution.name} (AICTE ID: ${app.institution.aicteId})</td></tr>
-    <tr><td>State</td><td>${app.institution.state}</td></tr>
-    <tr><td>Application Type</td><td>${app.applicationType.replace("_", " ")}</td></tr>
-    <tr><td>Route</td><td>${app.route.replace(/_/g, " ")}</td></tr>
-    <tr><td>Current Stage</td><td>${STAGES[app.currentStageKey]?.label ?? app.currentStageKey}</td></tr>
-    <tr><td>Status</td><td>${app.status}</td></tr>
-    <tr><td>Assigned To</td><td>${app.assignedTo?.name ?? "Unassigned"} (${app.assignedTo?.role ?? ""})</td></tr>
-    <tr><td>Submitted At</td><td>${new Date(app.submittedAt).toLocaleDateString()}</td></tr>
-  </table>
-
-  <h2>Stage History</h2>
-  <table>
-    <tr><th>Stage</th><th>Entered</th><th>Exited</th><th>Duration</th><th>Outcome</th></tr>
-    ${app.stages.map((s) => `
-      <tr>
-        <td>${STAGES[s.stageKey]?.label ?? s.stageKey}</td>
-        <td>${new Date(s.enteredAt).toLocaleDateString()}</td>
-        <td>${s.exitedAt ? new Date(s.exitedAt).toLocaleDateString() : "—"}</td>
-        <td>${s.exitedAt ? `${differenceInCalendarDays(s.exitedAt, s.enteredAt)} days` : "Ongoing"}</td>
-        <td>${s.outcome ?? "—"}</td>
-      </tr>
-    `).join("")}
-  </table>
-
-  <h2>Observations (${app.observations.length})</h2>
-  ${app.observations.length === 0 ? "<p>No observations.</p>" : `
-  <table>
-    <tr><th>Kind</th><th>Author</th><th>Date</th><th>Text</th></tr>
-    ${app.observations.map((o) => `
-      <tr>
-        <td>${o.kind}</td>
-        <td>${o.author.name}</td>
-        <td>${new Date(o.createdAt).toLocaleDateString()}</td>
-        <td>${o.text}</td>
-      </tr>
-    `).join("")}
-  </table>
-  `}
-
-  <h2>Open Deadlines</h2>
-  ${app.deadlineItems.length === 0 ? "<p>No open deadlines.</p>" : `
-  <table>
-    <tr><th>Kind</th><th>Title</th><th>Due</th><th>Escalation Level</th></tr>
-    ${app.deadlineItems.map((d) => `
-      <tr>
-        <td>${d.kind.replace("_", " ")}</td>
-        <td>${d.title}</td>
-        <td>${new Date(d.dueAt).toLocaleDateString()}</td>
-        <td>${d.escalationLevel > 0 ? `L${d.escalationLevel}` : "—"}</td>
-      </tr>
-    `).join("")}
-  </table>
-  `}
-
-  <button class="no-print" onclick="window.print()" style="background: #14281D; color: #FAF8F5; border: none; padding: 10px 22px; border-radius: 9999px; cursor: pointer; font-size: 13px; font-weight: 700; font-family: monospace; margin-top: 16px;">[PRINT] Save as PDF</button>
 </body>
 </html>`;
 
-  return new NextResponse(html, { headers: { "Content-Type": "text/html" } });
+  return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }

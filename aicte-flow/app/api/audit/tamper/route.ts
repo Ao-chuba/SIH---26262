@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       ok: true,
       action: "simulate",
       brokenAtSeq: target.seq,
-      message: `Payload at seq #${target.seq} mutated. Verify chain should fail.`,
+      message: `Sequence #${target.seq} payload modified without updating its SHA-256 hash.`,
     });
   }
 
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     ok: true,
     action: "restore",
     restoredSeq: backup.seq,
-    message: `Seq #${backup.seq} restored. Verify chain should pass (new tip entries after restore are fine).`,
+    message: `Sequence #${backup.seq} restored to original payload.`,
   });
 }
 

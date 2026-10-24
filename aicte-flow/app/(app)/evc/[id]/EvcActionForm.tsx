@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { formatAppType, formatStatus } from "@/lib/format";
 
 export function EvcActionForm({
   evc,
-  userRole,
   committeeMembers,
 }: {
   evc: any;
@@ -15,7 +15,9 @@ export function EvcActionForm({
 }) {
   const router = useRouter();
   const [scheduledFor, setScheduledFor] = useState(
-    evc.scheduledFor ? new Date(evc.scheduledFor).toISOString().slice(0, 10) : new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
+    evc.scheduledFor
+      ? new Date(evc.scheduledFor).toISOString().slice(0, 10)
+      : new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
   );
   const [committeeId, setCommitteeId] = useState(evc.committeeId ?? (committeeMembers[0]?.id || ""));
   const [isNewInstitution, setIsNewInstitution] = useState(evc.isNewInstitution);
@@ -71,37 +73,60 @@ export function EvcActionForm({
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Expert Visit Committee (EVC) Action</h1>
-          <p className="page-subtitle">Application: {evc.application.refNo} • {evc.application.institution.name}</p>
+          <h1 className="page-title">EVC Inspection</h1>
+          <p className="page-subtitle">
+            {evc.application.refNo} · {evc.application.institution.name}
+          </p>
         </div>
-        <Link href="/evc" className="btn btn-secondary">&lt;- Back to EVC Queue</Link>
+        <Link href="/evc" className="btn btn-secondary">
+          &larr; EVC Queue
+        </Link>
       </div>
 
       {error && (
-        <div style={{ padding: "12px 16px", background: "#fef2f2", color: "#dc2626", borderRadius: 6, marginBottom: 16 }}>
+        <div
+          style={{
+            padding: "12px 16px",
+            background: "var(--red-bg)",
+            border: "1px solid var(--red-border)",
+            color: "var(--red)",
+            borderRadius: 10,
+            marginBottom: 16,
+          }}
+        >
           {error}
         </div>
       )}
 
       {/* Case Overview */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-header"><span className="card-title">Case Overview</span></div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, fontSize: 13 }}>
+        <div className="card-header">
+          <span className="card-title">Case Details</span>
+        </div>
+        <div className="grid-2" style={{ fontSize: 13 }}>
           <div>
-            <span style={{ color: "#64748b" }}>Institution Name:</span><br />
+            <span style={{ color: "var(--forest-muted)" }}>Institution</span>
+            <br />
             <strong>{evc.application.institution.name}</strong>
           </div>
           <div>
-            <span style={{ color: "#64748b" }}>Application Type:</span><br />
-            <span className="badge badge-blue">{evc.application.applicationType}</span>
+            <span style={{ color: "var(--forest-muted)" }}>Application Type</span>
+            <br />
+            <span className="badge badge-blue">{formatAppType(evc.application.applicationType)}</span>
           </div>
           <div>
-            <span style={{ color: "#64748b" }}>Current Status:</span><br />
-            <span className="badge badge-amber">{evc.status}</span>
+            <span style={{ color: "var(--forest-muted)" }}>Visit Status</span>
+            <br />
+            <span className="badge badge-amber">{formatStatus(evc.status)}</span>
           </div>
           <div>
-            <span style={{ color: "#64748b" }}>New Institution Flag:</span><br />
-            {evc.isNewInstitution ? <span className="badge badge-red">New Institution (Strict 30d SLA)</span> : <span className="badge badge-gray">Existing</span>}
+            <span style={{ color: "var(--forest-muted)" }}>Classification</span>
+            <br />
+            {evc.isNewInstitution ? (
+              <span className="badge badge-red">New Institution (30d SLA)</span>
+            ) : (
+              <span className="badge badge-gray">Existing</span>
+            )}
           </div>
         </div>
       </div>
@@ -109,29 +134,31 @@ export function EvcActionForm({
       {/* Schedule Form */}
       {evc.status === "QUEUED" && (
         <form onSubmit={handleSchedule} className="card">
-          <div className="card-header"><span className="card-title">[SCHEDULE] Schedule Physical / Virtual Inspection</span></div>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Scheduled Inspection Date *</label>
+          <div className="card-header">
+            <span className="card-title">Schedule Inspection</span>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Inspection Date *</label>
             <input
               type="date"
-              className="input-text"
+              className="form-input"
               value={scheduledFor}
               onChange={(e) => setScheduledFor(e.target.value)}
               required
-              style={{ width: "100%" }}
             />
           </div>
 
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Assign Committee Lead *</label>
+          <div className="form-group">
+            <label className="form-label">Committee Lead *</label>
             <select
-              className="input-text"
+              className="form-select"
               value={committeeId}
               onChange={(e) => setCommitteeId(e.target.value)}
-              style={{ width: "100%" }}
             >
               {committeeMembers.map((m) => (
-                <option key={m.id} value={m.id}>{m.name} ({m.email})</option>
+                <option key={m.id} value={m.id}>
+                  {m.name} ({m.email})
+                </option>
               ))}
             </select>
           </div>
@@ -143,12 +170,12 @@ export function EvcActionForm({
                 checked={isNewInstitution}
                 onChange={(e) => setIsNewInstitution(e.target.checked)}
               />
-              <strong>Classify as New Institution (Enforces 30-day visit completion deadline)</strong>
+              <strong>New Institution (30-day completion SLA)</strong>
             </label>
           </div>
 
           <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: "100%" }}>
-            {loading ? "Scheduling..." : "[+] Confirm EVC Schedule & Advance to EVC_SCHEDULED"}
+            {loading ? "Saving..." : "Confirm Schedule"}
           </button>
         </form>
       )}
@@ -156,38 +183,36 @@ export function EvcActionForm({
       {/* Complete Visit Form */}
       {evc.status === "SCHEDULED" && (
         <form onSubmit={handleComplete} className="card">
-          <div className="card-header"><span className="card-title">[REPORT] Submit EVC Inspection Report</span></div>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Report Reference Number / Upload Docket *</label>
+          <div className="card-header">
+            <span className="card-title">Submit Inspection Report</span>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Report Reference Number *</label>
             <input
               type="text"
-              className="input-text"
+              className="form-input"
               value={reportRef}
               onChange={(e) => setReportRef(e.target.value)}
               required
-              style={{ width: "100%" }}
             />
           </div>
 
-          <p style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
-            Submitting the report will automatically satisfy the inspection completion SLA and advance the application into the <strong>EVC_REPORT</strong> review queue.
-          </p>
-
           <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: "100%" }}>
-            {loading ? "Submitting..." : "[>] Mark Completed & Advance to EVC Report Review"}
+            {loading ? "Submitting..." : "Submit Report & Advance to Review"}
           </button>
         </form>
       )}
 
       {/* Completed State */}
       {evc.status === "COMPLETED" && (
-        <div className="card" style={{ background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
-          <h3 style={{ margin: "0 0 8px 0", color: "#166534" }}>[OK] EVC Inspection Completed</h3>
-          <p style={{ fontSize: 13, color: "#15803d", margin: "0 0 12px 0" }}>
-            The committee report reference has been recorded as <strong>{evc.reportRef}</strong> on {evc.completedAt ? new Date(evc.completedAt).toLocaleDateString() : "recently"}.
+        <div className="card" style={{ background: "var(--green-bg)", border: "1.5px solid var(--green-border)" }}>
+          <h3 style={{ margin: "0 0 6px 0", color: "var(--green)" }}>Inspection Completed</h3>
+          <p style={{ fontSize: 13, color: "var(--forest)", margin: "0 0 12px 0" }}>
+            Report reference <strong>{evc.reportRef}</strong> recorded on{" "}
+            {evc.completedAt ? new Date(evc.completedAt).toLocaleDateString() : "recently"}.
           </p>
           <Link href={`/applications/${evc.applicationId}`} className="btn btn-primary btn-sm">
-            View Application Stage Tracker
+            Open Application
           </Link>
         </div>
       )}

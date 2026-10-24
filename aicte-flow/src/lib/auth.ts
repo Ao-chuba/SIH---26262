@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 import { prisma } from "./db";
 import type { User, Region, Institution } from "@prisma/client";
 
@@ -33,6 +34,21 @@ export async function requireRole(roles: Role[]): Promise<CurrentUser> {
   if (!roles.includes(user.role as Role))
     throw new AuthError(`Role ${user.role} not allowed. Required: ${roles.join(", ")}`, 403);
   return user;
+}
+
+export async function requireRoleResponse(roles: Role[]): Promise<CurrentUser | NextResponse> {
+  try {
+    return await requireRole(roles);
+  } catch (e) {
+    if (e instanceof AuthError) {
+      return NextResponse.json({ error: e.message }, { status: e.status });
+    }
+    throw e;
+  }
+}
+
+export function isDenied(value: CurrentUser | NextResponse): value is NextResponse {
+  return value instanceof Response;
 }
 
 export async function requireAuth(): Promise<CurrentUser> {

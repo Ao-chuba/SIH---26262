@@ -630,10 +630,14 @@ async function main() {
   // Undertakings (~40)
   console.log("📝 Creating undertakings...");
   const decidedApps = await prisma.application.findMany({ where: { currentStageKey: "DECISION_PENDING" }, take: 20 });
+  const demoAppsForUt = [demoApp1, demoApp2, demoApp3, demoApp4, demoApp5];
   const undertakingStatuses = ["PENDING", "SUBMITTED", "VERIFIED", "OVERDUE", "REJECTED"];
   for (let i = 0; i < 40; i++) {
-    const app = pick(decidedApps.length > 0 ? decidedApps : await prisma.application.findMany({ take: 20 }));
-    const status = pick(undertakingStatuses);
+    const app =
+      i < 10
+        ? demoAppsForUt[i % demoAppsForUt.length]
+        : pick(decidedApps.length > 0 ? decidedApps : await prisma.application.findMany({ take: 20 }));
+    const status = i === 0 ? "PENDING" : i === 1 ? "OVERDUE" : i === 2 ? "SUBMITTED" : pick(undertakingStatuses);
     const dueDate = status === "OVERDUE"
       ? daysAgo(randInt(1, 60))
       : daysFromNow(randInt(-5, 90));
@@ -686,9 +690,13 @@ async function main() {
   const docTypes = ["LEASE", "NOC", "LAND_USE", "FIRE_SAFETY", "BUILDING_STABILITY", "OTHER"];
   const docStatuses = ["VALID", "EXPIRING", "EXPIRED", "RENEWAL_SUBMITTED", "RENEWAL_VERIFIED"];
   for (let i = 0; i < 50; i++) {
-    const inst = pick(institutions);
-    const docType = pick(docTypes);
+    // Guarantee the first 10 institutions (which have login accounts) each get 2 documents (1 expiring/expired, 1 valid)
+    const inst = i < 20 ? institutions[i % 10] : pick(institutions);
+    const docType = i < 10 ? "LEASE" : i < 20 ? "FIRE_SAFETY" : pick(docTypes);
     const status = (() => {
+      if (i < 5) return "EXPIRING";
+      if (i < 10) return "EXPIRED";
+      if (i < 20) return "VALID";
       const r = rand();
       if (r < 0.40) return "VALID";
       if (r < 0.55) return "EXPIRING";

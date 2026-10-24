@@ -90,30 +90,30 @@ export function evaluateAph(metrics: AphMetrics): AphCheck[] {
     {
       key: "ratio",
       label: "Faculty–Student Ratio",
-      detail: `${metrics.facultyCount} faculty for ${metrics.studentIntake} intake (need ≥ ${reqFac} at 1:${APH_NORMS.facultyStudentRatio})`,
+      detail: `${metrics.facultyCount} faculty for ${metrics.studentIntake} intake (minimum ${reqFac} required at 1:${APH_NORMS.facultyStudentRatio})`,
       pass: ratioOk,
-      clause: "APH Norms Ch.7 — Faculty:Student ≥ 1:20 (UG Engg / MBA-style)",
+      clause: "APH Ch. 7 · Faculty:Student ≥ 1:20",
     },
     {
       key: "intake",
-      label: "Intake Multiple",
-      detail: `${metrics.studentIntake} seats (must be multiple of ${APH_NORMS.intakeMultiples.join(" / ")})`,
+      label: "Intake Division",
+      detail: `${metrics.studentIntake} seats (division of ${APH_NORMS.intakeMultiples.join(" / ")})`,
       pass: intakeOk,
-      clause: "APH Norms Ch.3 — Intake in divisions of 30 / 60",
+      clause: "APH Ch. 3 · Standard Intake Divisions (30 / 60)",
     },
     {
       key: "cadre",
       label: "Cadre Ratio (1:2:6)",
-      detail: `Prof ${metrics.professors} : Assoc ${metrics.associates} : Asst ${metrics.assistants}`,
+      detail: `Prof ${metrics.professors} · Assoc ${metrics.associates} · Asst ${metrics.assistants}`,
       pass: cadreOk,
-      clause: "APH Norms Ch.7 — Cadre 1 Professor : 2 Associate : 6 Assistant",
+      clause: "APH Ch. 7 · Cadre Ratio 1 : 2 : 6",
     },
     {
       key: "lab",
-      label: "Lab Built-up Area",
-      detail: `${metrics.labAreaSqm} sq.m vs required ${metrics.requiredLabAreaSqm} sq.m (illustrative)`,
+      label: "Instructional & Lab Area",
+      detail: `${metrics.labAreaSqm} sq.m available vs ${metrics.requiredLabAreaSqm} sq.m required`,
       pass: labOk,
-      clause: "APH Infrastructure norms — lab built-up vs intake (demo heuristic)",
+      clause: "APH Annexure · Built-up Instructional & Lab Area",
     },
   ];
 }
@@ -132,8 +132,8 @@ export function formatAphDeficiencies(metrics: AphMetrics | null): string {
   const fails = evaluateAph(metrics).filter((c) => !c.pass);
   if (fails.length === 0) return "";
   return fails
-    .map((c) => `[DEFICIENCY] ${c.label}: ${c.detail}\n  Ref: ${c.clause}`)
-    .join("\n\n");
+    .map((c) => `Deficiency — ${c.label}: ${c.detail} (${c.clause})`)
+    .join("\n");
 }
 
 export type HealthBreakdown = {

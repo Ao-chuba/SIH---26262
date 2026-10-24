@@ -5,10 +5,20 @@ import { getNow } from "@/lib/clock";
 import { AdminControls } from "./AdminControls";
 import { ROUTES, STAGES, ALERT_RULES, APP_TYPE_ROUTE_MAP, EVC_NEW_INSTITUTION_DAYS } from "@/config/rules";
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/");
   if (user.role !== "ADMIN") redirect("/dashboard");
+
+  const params = await searchParams;
+  const initialTab =
+    params.tab === "rules" || params.tab === "users" || params.tab === "ticks"
+      ? params.tab
+      : "clock";
 
   const [clockRecord, users, tickLogs, ruleConfigs] = await Promise.all([
     prisma.systemClock.findUnique({ where: { id: 1 } }),
@@ -39,12 +49,13 @@ export default async function AdminPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Admin Control Center</h1>
-          <p className="page-subtitle">Simulated Time Engine, Rule Configuration & System Governance</p>
+          <h1 className="page-title">Administration</h1>
+          <p className="page-subtitle">Clock simulation, SLA rules, and user hierarchy</p>
         </div>
       </div>
 
       <AdminControls
+        initialTab={initialTab}
         simulatedNow={clockRecord?.simulatedNow?.toISOString() ?? null}
         currentDateIso={now.toISOString()}
         initialRules={currentRules}
@@ -54,7 +65,7 @@ export default async function AdminPage() {
           email: u.email,
           role: u.role,
           designation: u.designation ?? "",
-          region: u.region?.name ?? "All / Central",
+          region: u.region?.name ?? "Central",
           escalatesTo: u.escalatesTo?.name ?? "None",
         }))}
         recentTicks={tickLogs.map((t) => ({

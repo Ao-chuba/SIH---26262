@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prisma, runTx } from "@/lib/db";
 import { appendAudit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
+import { getNow } from "@/lib/clock";
+import { STAGES } from "@/config/rules";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -16,14 +18,45 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!app) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (app.status !== "RETURNED") return NextResponse.json({ error: "Application is not in returned state" }, { status: 409 });
 
-  await prisma.$transaction(async (tx) => {
+  const now = await getNow();
+  const reScrutinyDays = STAGES.RE_SCRUTINY?.timelineDays ?? 7;
+
+  await runTx(async (tx) => {
     await tx.observation.create({
       data: { applicationId: id, stageKey: app.currentStageKey, authorId: user.id, text, kind: "REPLY" },
     });
 
+    await tx.deadlineItem.updateMany({
+      where: { refId: id, refType: "Application", state: "OPEN", kind: "STAGE_TIMELINE" },
+      data: { state: "SATISFIED", closedAt: now },
+    });
+
+    await tx.applicationStage.create({
+      data: {
+        applicationId: id,
+        stageKey: "RE_SCRUTINY",
+        enteredAt: now,
+        enteredById: user.id,
+      },
+    });
+
     await tx.application.update({
       where: { id },
-      data: { status: "IN_PROGRESS", currentStageKey: "RE_SCRUTINY" },
+      data: { status: "IN_PROGRESS", currentStageKey: "RE_SCRUTINY", stageEnteredAt: now, updatedAt: now },
+    });
+
+    await tx.deadlineItem.create({
+      data: {
+        kind: "STAGE_TIMELINE",
+        refType: "Application",
+        refId: id,
+        institutionId: app.institutionId,
+        regionId: app.regionId,
+        ownerUserId: app.assignedToId,
+        title: `${app.refNo} – Re-Scrutiny deadline`,
+        dueAt: new Date(now.getTime() + reScrutinyDays * 86400000),
+        applicationId: id,
+      },
     });
   });
 
