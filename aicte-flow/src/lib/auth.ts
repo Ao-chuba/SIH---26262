@@ -89,7 +89,12 @@ export function canViewApplication(
     return ["EVC_QUEUE", "EVC_SCHEDULED", "EVC_REPORT"].includes(app.currentStageKey ?? "");
   }
   if (user.role === "SAC_SHC_MEMBER") {
-    return app.currentStageKey === "SAC_SHC" || app.assignedToId === user.id;
+    // Keep docket visible after Advance (stage leaves SAC_SHC → DECISION_PENDING / DECIDED)
+    return (
+      app.currentStageKey === "SAC_SHC" ||
+      app.currentStageKey === "DECISION_PENDING" ||
+      app.assignedToId === user.id
+    );
   }
   return false;
 }
