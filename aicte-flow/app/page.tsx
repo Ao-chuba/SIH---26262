@@ -93,38 +93,42 @@ export default async function LoginPage() {
           gap: 12,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <img
+            src="/logo.png"
+            alt="AICTE Logo"
             style={{
-              width: 10,
-              height: 10,
-              borderRadius: "50%",
-              background: "var(--highlighter-yellow)",
-              border: "1.5px solid var(--forest)",
-              display: "inline-block",
+              width: 36,
+              height: 36,
+              objectFit: "contain",
+              borderRadius: 8,
+              flexShrink: 0,
             }}
           />
           <span style={{ fontSize: 20, fontWeight: 800, color: "var(--forest)", letterSpacing: "-0.03em" }}>
             AICTE Flow
           </span>
-          <span
-            style={{
-              fontSize: 11,
-              fontFamily: "var(--font-mono)",
-              background: "var(--bg-subtle)",
-              color: "var(--forest)",
-              border: "1px solid var(--border)",
-              padding: "2px 8px",
-              borderRadius: "9999px",
-              fontWeight: 700,
-            }}
-          >
-            SIH-26262
-          </span>
         </div>
 
-        <div style={{ fontSize: 13, color: "var(--forest-muted)", fontWeight: 600 }}>
-          Approval Process Handbook (APH) Workflow Portal
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 13, color: "var(--forest-muted)", fontWeight: 600 }}>
+            Approval Process Handbook (APH)
+          </span>
+          <span
+            style={{
+              fontSize: 11.5,
+              fontFamily: "var(--font-mono)",
+              background: "var(--highlighter-yellow)",
+              color: "var(--forest)",
+              border: "1px solid var(--forest)",
+              padding: "4px 12px",
+              borderRadius: "9999px",
+              fontWeight: 700,
+              letterSpacing: "0.02em",
+            }}
+          >
+            Workflow Portal
+          </span>
         </div>
       </header>
 
