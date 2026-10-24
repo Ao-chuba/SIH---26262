@@ -403,6 +403,25 @@ code, pre, .font-mono, .sla-chip, .badge, .mono-label {
   gap: 16px;
 }
 
+/* Login: even 3×2 role workspaces (avoids orphan Admin card) */
+.role-workspace-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .role-workspace-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .role-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Cards */
 .card {
   background: var(--card-bg);

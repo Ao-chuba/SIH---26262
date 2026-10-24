@@ -46,7 +46,8 @@ export const APP_TYPE_ROUTE_MAP: Record<string, RouteKey> = {
   EXTENSION:        "ONLY_SCRUTINY",
   INTAKE_INCREASE:  "SCRUTINY_EVC",
   CLOSURE:          "ONLY_SCRUTINY",
-  OTHER:            "SCRUTINY_EVC",
+  /** Direct campus verification without preliminary scrutiny (APH Only-EVC combination). */
+  OTHER:            "ONLY_EVC",
 };
 
 export const RESPONSE_WINDOW_DAYS = 7; // when application is returned to institution

@@ -8,7 +8,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (isDenied(user)) return user;
   const body = await request.json();
   try {
-    await completeEvc(id, user, { reportRef: body.reportRef });
+    await completeEvc(id, user, {
+      reportRef: body.reportRef,
+      findingsSummary: body.findingsSummary,
+      recommendation: body.recommendation,
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(

@@ -87,7 +87,6 @@ export default async function LoginPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
-      {/* Header */}
       <header
         style={{
           borderBottom: "1.5px solid var(--border)",
@@ -117,7 +116,7 @@ export default async function LoginPage() {
           </span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <span style={{ fontSize: 13, color: "var(--forest-muted)", fontWeight: 600 }}>
             Approval Process Handbook (APH)
           </span>
@@ -134,59 +133,21 @@ export default async function LoginPage() {
               letterSpacing: "0.02em",
             }}
           >
-            Workflow Portal
+            SIH26262
           </span>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main style={{ flex: 1, maxWidth: 1160, width: "100%", margin: "0 auto", padding: "44px 24px 56px" }}>
-        <div style={{ textAlign: "center", maxWidth: 780, margin: "0 auto 40px" }}>
-          <div
-            style={{
-              display: "inline-block",
-              background: "var(--accent-blue)",
-              color: "var(--forest)",
-              border: "1px solid var(--forest)",
-              padding: "4px 14px",
-              borderRadius: "9999px",
-              fontSize: 11.5,
-              fontWeight: 700,
-              fontFamily: "var(--font-mono)",
-              marginBottom: 16,
-            }}
-          >
-            SIH26262 · DEMO MODE
-          </div>
-
-          <div
-            style={{
-              textAlign: "left",
-              maxWidth: 640,
-              margin: "0 auto 20px",
-              padding: "12px 16px",
-              borderRadius: 14,
-              background: "var(--highlighter-yellow-soft)",
-              border: "1.5px solid var(--forest)",
-              fontSize: 12.5,
-              color: "var(--forest)",
-              lineHeight: 1.5,
-            }}
-          >
-            <strong style={{ fontWeight: 800 }}>Evaluation / demo environment.</strong> Role entry uses a
-            cookie-based account switcher (no passwords). Email and SMS alerts are written to an in-app
-            delivery log — they are not sent through NIC / SMTP gateways. Production path: Jan Parichay SSO
-            and official notification relays (see README roadmap).
-          </div>
-
+      <main style={{ flex: 1, maxWidth: 1080, width: "100%", margin: "0 auto", padding: "40px 24px 56px" }}>
+        <div style={{ textAlign: "center", maxWidth: 720, margin: "0 auto 32px" }}>
           <h1
             style={{
-              fontSize: "clamp(1.9rem, 3.6vw, 2.9rem)",
+              fontSize: "clamp(1.85rem, 3.4vw, 2.75rem)",
               fontWeight: 800,
               color: "var(--forest)",
               lineHeight: 1.15,
               letterSpacing: "-0.03em",
-              marginBottom: 14,
+              marginBottom: 12,
             }}
           >
             Approval workflow routing,{" "}
@@ -215,18 +176,34 @@ export default async function LoginPage() {
 
           <p
             style={{
-              fontSize: 15.5,
+              fontSize: 15,
               color: "var(--forest-muted)",
               lineHeight: 1.55,
-              maxWidth: 640,
-              margin: "0 auto",
+              maxWidth: 600,
+              margin: "0 auto 18px",
             }}
           >
-            Stage routing across Scrutiny, EVC, and SAC/SHC with deadline alerts, undertaking verification, lease expiry tracking, and a hash-chained audit log.
+            Stage routing across Scrutiny, EVC, and SAC/SHC with deadline alerts, undertaking verification,
+            lease expiry tracking, and a hash-chained audit log.
+          </p>
+
+          {/* Compact honesty strip — needed for jury Q&A, not a second hero card */}
+          <p
+            style={{
+              margin: "0 auto",
+              maxWidth: 640,
+              fontSize: 12,
+              lineHeight: 1.45,
+              color: "var(--forest-muted)",
+              borderTop: "1px solid var(--border)",
+              paddingTop: 12,
+            }}
+          >
+            Evaluation build · passwordless role switch · Email/SMS logged in-app only · Production: Jan
+            Parichay SSO + NIC relays
           </p>
         </div>
 
-        {/* Role Cards Grid */}
         <div style={{ marginBottom: 28 }}>
           <div
             style={{
@@ -241,17 +218,12 @@ export default async function LoginPage() {
             </h2>
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(205px, 1fr))",
-              gap: 16,
-            }}
-          >
+          {/* Fixed 3×2 grid so Admin is not stranded alone on a second row */}
+          <div className="role-workspace-grid">
             {roleCards.map((card) => {
               const matchedUser = users.find((u) => u.role === card.role);
               return (
-                <form key={card.role} action={switchUser} style={{ display: "flex" }}>
+                <form key={card.role} action={switchUser} style={{ display: "flex", minWidth: 0 }}>
                   <input type="hidden" name="userId" value={matchedUser?.id ?? ""} />
                   <button
                     type="submit"
@@ -264,6 +236,7 @@ export default async function LoginPage() {
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "space-between",
+                      minHeight: 200,
                     }}
                   >
                     <div>
@@ -328,13 +301,21 @@ export default async function LoginPage() {
         </div>
 
         <div className="card" style={{ padding: "18px 22px", borderRadius: 18 }}>
-          <span style={{ fontWeight: 700, fontSize: 13.5, color: "var(--forest)", display: "block", marginBottom: 10 }}>
+          <span
+            style={{
+              fontWeight: 700,
+              fontSize: 13.5,
+              color: "var(--forest)",
+              display: "block",
+              marginBottom: 10,
+            }}
+          >
             Sign in as a specific account
           </span>
           <AccountSelector users={userOptions} switchUserAction={switchUser} />
           <p style={{ marginTop: 14, fontSize: 12.5, color: "var(--forest-muted)" }}>
-            After entry, open <strong style={{ color: "var(--forest)" }}>Jury Demo</strong> in the sidebar for the
-            SIH26262 golden path (DEMO-* dockets → tick → audit).
+            After entry, open <strong style={{ color: "var(--forest)" }}>Jury Demo</strong> in the sidebar for
+            the SIH26262 golden path.
           </p>
         </div>
       </main>
