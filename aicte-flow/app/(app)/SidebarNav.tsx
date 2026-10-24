@@ -45,7 +45,6 @@ export function SidebarNav({
 
   return (
     <nav className="sidebar-nav">
-      <div className="nav-section-label">// Navigation</div>
       {items.map((item) => {
         const isActive =
           pathname === item.href ||
