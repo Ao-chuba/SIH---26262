@@ -185,6 +185,9 @@ export default async function ReportsPage() {
                 </tr>
               );
             })}
+            {stageBreakdown.length === 0 && (
+              <tr><td colSpan={3}><div className="empty-state"><p>No application data available.</p></div></td></tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -207,6 +210,9 @@ export default async function ReportsPage() {
                   <td><strong>{e._count.id}</strong></td>
                 </tr>
               ))}
+              {evcStats.length === 0 && (
+                <tr><td colSpan={2}><div className="empty-state"><p>No EVC records available.</p></div></td></tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -226,6 +232,9 @@ export default async function ReportsPage() {
                   <td><strong>{u._count.id}</strong></td>
                 </tr>
               ))}
+              {undertakingStats.length === 0 && (
+                <tr><td colSpan={2}><div className="empty-state"><p>No undertaking records available.</p></div></td></tr>
+              )}
             </tbody>
           </table>
         </div>

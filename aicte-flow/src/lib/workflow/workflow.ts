@@ -11,7 +11,7 @@ import {
   canReturnApplication,
 } from "../auth";
 import { ROUTES, STAGES, APP_TYPE_ROUTE_MAP, EVC_NEW_INSTITUTION_DAYS, RESPONSE_WINDOW_DAYS } from "../../config/rules";
-import { getNextStage, getRouteStages } from "./routes";
+import { getConfiguredNextStage, getConfiguredRouteStages, getRouteStages } from "./routes";
 import type { User, Application } from "@prisma/client";
 
 type RouteKey = keyof typeof ROUTES;
@@ -51,7 +51,8 @@ export async function routeApplication(
   } catch {}
 
   const route: RouteKey = routeMap[app.applicationType] ?? "ONLY_SCRUTINY";
-  const stages = ROUTES[route];
+  const stages = await getConfiguredRouteStages(route);
+  if (stages.length === 0) throw new Error(`Route ${route} has no configured stages`);
   const firstStage = stages[0];
   const now = await getNow();
   const stageConfigs = await getConfiguredStages();
@@ -163,7 +164,7 @@ export async function advanceApplication(
     throw new Error(`Cannot advance application in status ${app.status}`);
   }
 
-  const nextStage = getNextStage(app.route, app.currentStageKey);
+  const nextStage = await getConfiguredNextStage(app.route, app.currentStageKey);
   const now = await getNow();
   const stageConfigs = await getConfiguredStages();
 
@@ -334,6 +335,13 @@ export async function returnApplication(
   }
   if (actor.role === "REGIONAL_OFFICER") {
     assertRegionAccess(actor, app.regionId);
+  }
+  if (toStageKey) {
+    const routeStages = await getConfiguredRouteStages(app.route);
+    const normalized = toStageKey === "RE_SCRUTINY" ? "SCRUTINY" : toStageKey;
+    if (!routeStages.includes(normalized)) {
+      throw new Error(`Invalid return stage ${toStageKey} for route ${app.route}`);
+    }
   }
   const now = await getNow();
 
@@ -597,8 +605,23 @@ export async function scheduleEvc(
   if (actor.role === "REGIONAL_OFFICER") {
     assertRegionAccess(actor, evc.application.regionId);
   }
+  if (evc.status !== "QUEUED" || evc.application.currentStageKey !== "EVC_QUEUE") {
+    throw new Error("Only a queued EVC visit at EVC Queue can be scheduled");
+  }
 
   const now = await getNow();
+  if (!(data.scheduledFor instanceof Date) || Number.isNaN(data.scheduledFor.getTime())) {
+    throw new Error("A valid EVC schedule date is required");
+  }
+  if (data.scheduledFor.getTime() < now.getTime()) {
+    throw new Error("EVC schedule date cannot be in the past");
+  }
+  if (data.committeeId) {
+    const committee = await prisma.user.findUnique({ where: { id: data.committeeId } });
+    if (!committee || committee.role !== "EVC_COMMITTEE") {
+      throw new Error("Selected committee member is not an EVC Committee user");
+    }
+  }
   const isNew = data.isNewInstitution ?? evc.isNewInstitution;
   const [stageConfigs, evcNewDays] = await Promise.all([
     getConfiguredStages(),
@@ -697,6 +720,12 @@ export async function completeEvc(
     where: { id: evcId },
     include: { application: true },
   });
+  if (evc.status !== "SCHEDULED" || evc.application.currentStageKey !== "EVC_SCHEDULED") {
+    throw new Error("Only a scheduled EVC visit can be completed");
+  }
+  if (!data.reportRef?.trim()) {
+    throw new Error("A non-empty EVC report reference is required");
+  }
   assertEvcCommitteeAccess(actor, evc);
 
   const now = await getNow();
@@ -722,7 +751,7 @@ export async function completeEvc(
       data: {
         status: "COMPLETED",
         completedAt: now,
-        reportRef: data.reportRef,
+        reportRef: data.reportRef.trim(),
       },
     });
 
@@ -1010,6 +1039,7 @@ export async function verifyDocument(
           status: "VALID",
           verifiedById: actor.id,
           verifiedAt: now,
+          remarks: data.remarks,
         },
       });
 
@@ -1038,6 +1068,7 @@ export async function verifyDocument(
           status: "RENEWAL_REJECTED",
           verifiedById: actor.id,
           verifiedAt: now,
+          remarks: data.remarks,
         },
       });
     }

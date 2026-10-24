@@ -16,6 +16,7 @@ type UndertakingItem = {
   dueDate: string;
   status: string;
   remarks: string | null;
+  evidence: { id: string; fileName: string; note: string | null } | null;
 };
 
 export function UndertakingTable({
@@ -98,15 +99,17 @@ export function UndertakingTable({
     setLoading(true);
     setErrorMsg(null);
     try {
-      await fetch(`/api/undertakings/${activeVerifyId}/verify`, {
+      const res = await fetch(`/api/undertakings/${activeVerifyId}/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ verified: verifyMode === "approve", remarks }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Verification failed");
       setActiveVerifyId(null);
       router.refresh();
-    } catch {
-      setErrorMsg("Failed to record verification decision.");
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : "Failed to record verification decision.");
     } finally {
       setLoading(false);
     }
@@ -236,6 +239,7 @@ export function UndertakingTable({
                 <th>Due Date</th>
                 <th>SLA</th>
                 <th>Status</th>
+                <th>Evidence / Remarks</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -266,6 +270,15 @@ export function UndertakingTable({
                     </td>
                     <td>
                       <span className={`badge ${statusColors[ut.status] ?? "badge-gray"}`}>{formatStatus(ut.status)}</span>
+                    </td>
+                    <td style={{ minWidth: 190, fontSize: 12 }}>
+                      {ut.evidence ? (
+                        <Link href={`/api/evidence/${ut.evidence.id}`} className="table-link">
+                          {ut.evidence.fileName}
+                        </Link>
+                      ) : "—"}
+                      {ut.evidence?.note && <div style={{ marginTop: 4, color: "var(--forest-muted)" }}>{ut.evidence.note}</div>}
+                      {ut.remarks && <div style={{ marginTop: 4, color: "var(--forest-muted)" }}>{ut.remarks}</div>}
                     </td>
                     <td>
                       <div style={{ display: "flex", gap: 6 }}>
@@ -313,7 +326,7 @@ export function UndertakingTable({
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={8}>
                     <div className="empty-state"><p>No undertakings found.</p></div>
                   </td>
                 </tr>

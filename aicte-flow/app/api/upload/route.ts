@@ -11,6 +11,15 @@ export async function POST(request: NextRequest) {
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: "File exceeds the 5 MB upload limit" }, { status: 413 });
+    }
+    const extension = path.extname(file.name).toLowerCase();
+    const allowedExtensions = new Set([".pdf", ".png", ".jpg", ".jpeg"]);
+    const allowedMimeTypes = new Set(["application/pdf", "image/png", "image/jpeg"]);
+    if (!allowedExtensions.has(extension) || !allowedMimeTypes.has(file.type)) {
+      return NextResponse.json({ error: "Only PDF, PNG, JPG, and JPEG files are allowed" }, { status: 415 });
+    }
 
     const uploadsDir = path.join(process.cwd(), "uploads");
     await mkdir(uploadsDir, { recursive: true });

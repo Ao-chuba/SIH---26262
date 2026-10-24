@@ -47,6 +47,7 @@ export function AdminControls({
   const [rulesSaved, setRulesSaved] = useState(false);
 
   async function handleClockAction(action: "reset" | "addDays" | "set", days?: number) {
+    if (!window.confirm("Change the simulated system clock? This can trigger deadline and escalation changes.")) return;
     setLoading(true);
     setTickResult(null);
     setStatusMsg(null);
@@ -62,6 +63,7 @@ export function AdminControls({
         body: JSON.stringify(body),
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update clock");
       const summary = data.tick ?? data;
       setTickResult({
         remindersFired: summary.remindersFired ?? 0,
@@ -71,8 +73,8 @@ export function AdminControls({
         simulatedNow: data.simulatedNow,
       });
       router.refresh();
-    } catch {
-      setStatusMsg({ kind: "error", text: "Failed to update clock." });
+    } catch (error) {
+      setStatusMsg({ kind: "error", text: error instanceof Error ? error.message : "Failed to update clock." });
     } finally {
       setLoading(false);
     }
@@ -85,6 +87,7 @@ export function AdminControls({
     try {
       const res = await fetch("/api/engine/tick", { method: "POST" });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to run engine tick");
       setTickResult({
         remindersFired: data.remindersFired ?? 0,
         overdueMarked: data.overdueMarked ?? 0,
@@ -92,23 +95,25 @@ export function AdminControls({
         tickedAt: data.tickedAt,
       });
       router.refresh();
-    } catch {
-      setStatusMsg({ kind: "error", text: "Failed to run engine tick." });
+    } catch (error) {
+      setStatusMsg({ kind: "error", text: error instanceof Error ? error.message : "Failed to run engine tick." });
     } finally {
       setLoading(false);
     }
   }
 
   async function handleResetDemo() {
+    if (!window.confirm("Reset and re-seed all demo data? Existing demo changes will be lost.")) return;
     setResetting(true);
     setStatusMsg(null);
     try {
       const res = await fetch("/api/admin/reset", { method: "POST" });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to reset database");
       setStatusMsg({ kind: "ok", text: data.message ?? "Database re-seeded." });
       router.refresh();
-    } catch {
-      setStatusMsg({ kind: "error", text: "Failed to reset database." });
+    } catch (error) {
+      setStatusMsg({ kind: "error", text: error instanceof Error ? error.message : "Failed to reset database." });
     } finally {
       setResetting(false);
     }
@@ -118,21 +123,25 @@ export function AdminControls({
     setLoading(true);
     setStatusMsg(null);
     try {
-      await fetch("/api/admin/rules", {
+      const stagesResponse = await fetch("/api/admin/rules", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: "STAGES", value: rules.STAGES }),
       });
-      await fetch("/api/admin/rules", {
+      const stagesData = await stagesResponse.json().catch(() => ({}));
+      if (!stagesResponse.ok) throw new Error(stagesData.error || "Failed to save stage rules");
+      const evcResponse = await fetch("/api/admin/rules", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: "EVC_NEW_INSTITUTION_DAYS", value: rules.EVC_NEW_INSTITUTION_DAYS }),
       });
+      const evcData = await evcResponse.json().catch(() => ({}));
+      if (!evcResponse.ok) throw new Error(evcData.error || "Failed to save EVC rules");
       setRulesSaved(true);
       setTimeout(() => setRulesSaved(false), 3000);
       router.refresh();
-    } catch {
-      setStatusMsg({ kind: "error", text: "Failed to save rules." });
+    } catch (error) {
+      setStatusMsg({ kind: "error", text: error instanceof Error ? error.message : "Failed to save rules." });
     } finally {
       setLoading(false);
     }

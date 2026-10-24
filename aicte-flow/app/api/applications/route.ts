@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prisma, runTx } from "@/lib/db";
 import { routeApplication } from "@/lib/workflow/workflow";
 import { appendAudit } from "@/lib/audit";
 import { APP_TYPE_ROUTE_MAP } from "@/config/rules";
@@ -71,28 +71,19 @@ export async function POST(request: NextRequest) {
   const institution = await prisma.institution.findUniqueOrThrow({ where: { id: institutionId } });
 
   const intake = studentIntake ?? 60;
+  const aphWarnings: string[] = [];
   if (!isValidIntake(intake)) {
-    return NextResponse.json(
-      {
-        error: `APH intake gate: ${intake} seats is not a valid division of 30/60. Correct the intake before submission (e.g. 30, 60, 120, 180).`,
-      },
-      { status: 400 }
-    );
+    aphWarnings.push(`${intake} seats is not a standard APH division of 30/60.`);
   }
 
   const route = APP_TYPE_ROUTE_MAP[applicationType] ?? "ONLY_SCRUTINY";
-  const refNo = `APP-${Date.now().toString().slice(-8)}`;
+  const refNo = `APP-${Date.now().toString(36).slice(-6)}-${Math.random().toString(36).slice(2, 6)}`.toUpperCase();
   const metrics = buildMetrics(intake, true);
   if (typeof facultyCount === "number") {
     metrics.facultyCount = facultyCount;
     const req = requiredFaculty(intake);
     if (facultyCount < req) {
-      return NextResponse.json(
-        {
-          error: `APH faculty gate: ${facultyCount} faculty for ${intake} intake fails 1:20 (need ≥ ${req}). Fix before submission or file with an undertaking later.`,
-        },
-        { status: 400 }
-      );
+      aphWarnings.push(`${facultyCount} faculty for ${intake} intake is below the assistive 1:20 benchmark (need ${req}).`);
     }
   }
   metrics.studentIntake = intake;
@@ -111,6 +102,20 @@ export async function POST(request: NextRequest) {
       stageEnteredAt: new Date(),
     },
   });
+
+  try {
+    await routeApplication(app.id, user);
+  } catch (error) {
+    await runTx(async (tx) => {
+      await tx.notification.deleteMany({ where: { applicationId: app.id } });
+      await tx.deadlineItem.deleteMany({ where: { applicationId: app.id } });
+      await tx.applicationStage.deleteMany({ where: { applicationId: app.id } });
+      await tx.observation.deleteMany({ where: { applicationId: app.id } });
+      await tx.application.delete({ where: { id: app.id } });
+    }).catch(() => undefined);
+    const message = error instanceof Error ? error.message : "Failed to route application";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 
   if (details?.trim()) {
     await prisma.observation.create({
@@ -133,7 +138,6 @@ export async function POST(request: NextRequest) {
     payload: { refNo, applicationType, institutionId, details: details?.trim() || null },
   });
 
-  await routeApplication(app.id, user);
-
-  return NextResponse.json(app, { status: 201 });
+  const routedApp = await prisma.application.findUniqueOrThrow({ where: { id: app.id } });
+  return NextResponse.json({ ...routedApp, aphWarnings }, { status: 201 });
 }

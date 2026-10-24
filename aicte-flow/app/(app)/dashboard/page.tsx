@@ -6,6 +6,7 @@ import { getNow } from "@/lib/clock";
 import { computeHealthScore } from "@/lib/aph";
 import { formatAppType, formatRoute, formatStage, formatStatus } from "@/lib/format";
 import Link from "next/link";
+import { QuickLinks } from "../QuickLinks";
 
 function SlaChip({ days, escalationLevel }: { days: number; escalationLevel?: number }) {
   if (escalationLevel && escalationLevel > 0) {
@@ -443,12 +444,11 @@ export default async function DashboardPage() {
           </table>
         </div>
 
-        {completedVisits.length > 0 && (
-          <div className="card">
+        <div className="card">
             <div className="card-header">
               <span className="card-title">Recently Submitted Reports</span>
             </div>
-            <table className="data-table">
+            {completedVisits.length > 0 ? <table className="data-table">
               <thead>
                 <tr>
                   <th>Application</th>
@@ -471,9 +471,10 @@ export default async function DashboardPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table> : (
+              <div className="empty-state"><p>No completed EVC reports yet.</p></div>
+            )}
           </div>
-        )}
       </div>
     );
   }
@@ -785,6 +786,8 @@ export default async function DashboardPage() {
         </div>
         <Link href="/admin" className="btn btn-primary">Administration &rarr;</Link>
       </div>
+
+      <QuickLinks userRole={user.role} regionId={user.regionId} institutionId={user.institutionId} />
 
       <div className="kpi-grid">
         <Link href="/applications" className="kpi-card" style={{ textDecoration: "none" }}>

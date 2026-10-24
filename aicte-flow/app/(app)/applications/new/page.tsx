@@ -58,14 +58,14 @@ export default function NewApplicationPage() {
     if (!intakeOk) {
       return {
         ok: false,
-        title: "Invalid Intake Division (APH Ch. 3)",
+        title: "APH Advisory: Non-standard Intake Division",
         body: `${intakeNum || "—"} seats is not a multiple of 30/60. Standard divisions: 30, 60, 120, 180.`,
       };
     }
     if (!facultyOk) {
       return {
         ok: false,
-        title: "Faculty–Student Ratio Shortfall (APH Ch. 7)",
+        title: "APH Advisory: Faculty–Student Ratio Shortfall",
         body: `${facultyNum} faculty for ${intakeNum} seats is below 1:${APH_NORMS.facultyStudentRatio} (minimum ${needFac} required).`,
       };
     }
@@ -78,10 +78,6 @@ export default function NewApplicationPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!gate.ok) {
-      setError(gate.body);
-      return;
-    }
     if (!fileName.trim()) {
       setError("Please attach the DPR & Infrastructure Affidavit (.pdf) before submitting.");
       return;
@@ -119,7 +115,7 @@ export default function NewApplicationPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">New Application</h1>
-          <p className="page-subtitle">APH intake and faculty validation prior to submission</p>
+          <p className="page-subtitle">Assistive APH checks flag issues without replacing officer scrutiny</p>
         </div>
         <Link href="/dashboard" className="btn btn-secondary">
           Cancel
@@ -302,9 +298,9 @@ export default function NewApplicationPage() {
             padding: "12px 16px",
             borderRadius: 12,
             marginBottom: 20,
-            background: gate.ok ? "var(--green-bg)" : "var(--red-bg)",
-            border: `1.5px solid ${gate.ok ? "var(--green-border)" : "var(--red-border)"}`,
-            color: gate.ok ? "var(--green)" : "var(--red)",
+            background: gate.ok ? "var(--green-bg)" : "var(--amber-bg)",
+            border: `1.5px solid ${gate.ok ? "var(--green-border)" : "var(--amber-border)"}`,
+            color: gate.ok ? "var(--green)" : "var(--amber)",
           }}
         >
           <strong style={{ fontSize: 13 }}>{gate.title}</strong>
@@ -357,7 +353,7 @@ export default function NewApplicationPage() {
           </Link>
           <button
             type="submit"
-            disabled={submitting || uploadingFile || !gate.ok || !fileName.trim()}
+            disabled={submitting || uploadingFile || intakeNum <= 0 || !Number.isInteger(intakeNum) || !fileName.trim()}
             className="btn btn-primary"
             style={{ minWidth: 160 }}
           >

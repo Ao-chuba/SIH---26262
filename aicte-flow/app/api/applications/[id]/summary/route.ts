@@ -14,6 +14,10 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function safe(value: unknown): string {
+  return escapeHtml(String(value ?? ""));
+}
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireAuth().catch(() => null);
@@ -43,7 +47,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Case Summary – ${app.refNo}</title>
+  <title>Case Summary – ${safe(app.refNo)}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
@@ -126,7 +130,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     <div class="header-row">
       <div>
         <span class="pill">AICTE FLOW • SIH-26262 DOCKET</span>
-        <h1 style="margin-top: 10px;">Case Summary: <span class="mono">${app.refNo}</span></h1>
+        <h1 style="margin-top: 10px;">Case Summary: <span class="mono">${safe(app.refNo)}</span></h1>
         <p style="color: #4F6155; font-size: 12.5px; margin: 4px 0 0;">
           Generated: ${now.toLocaleString()} | Official Scrutiny &amp; Compliance Record
         </p>
@@ -144,16 +148,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     <h2>1. Application &amp; Institution Particulars</h2>
     <table>
       <tr><th>Field</th><th>Recorded Value</th></tr>
-      <tr><td>Reference Number</td><td class="mono"><strong>${app.refNo}</strong></td></tr>
-      <tr><td>Institution</td><td><strong>${app.institution.name}</strong> (AICTE ID: ${app.institution.aicteId})</td></tr>
-      <tr><td>State / Discipline</td><td>${app.institution.state} · ${app.institution.type}</td></tr>
-      <tr><td>Application Type</td><td>${formatAppType(app.applicationType)}</td></tr>
-      <tr><td>Workflow Route</td><td>${formatRoute(app.route)}</td></tr>
-      <tr><td>Current Stage</td><td><strong>${STAGES[app.currentStageKey]?.label ?? app.currentStageKey}</strong></td></tr>
-      <tr><td>Status</td><td><strong>${formatStatus(app.status)}</strong></td></tr>
-      <tr><td>Decision</td><td><strong>${app.decision ? formatStatus(app.decision) : "—"}</strong></td></tr>
+      <tr><td>Reference Number</td><td class="mono"><strong>${safe(app.refNo)}</strong></td></tr>
+      <tr><td>Institution</td><td><strong>${safe(app.institution.name)}</strong> (AICTE ID: ${safe(app.institution.aicteId)})</td></tr>
+      <tr><td>State / Discipline</td><td>${safe(app.institution.state)} · ${safe(app.institution.type)}</td></tr>
+      <tr><td>Application Type</td><td>${safe(formatAppType(app.applicationType))}</td></tr>
+      <tr><td>Workflow Route</td><td>${safe(formatRoute(app.route))}</td></tr>
+      <tr><td>Current Stage</td><td><strong>${safe(STAGES[app.currentStageKey]?.label ?? app.currentStageKey)}</strong></td></tr>
+      <tr><td>Status</td><td><strong>${safe(formatStatus(app.status))}</strong></td></tr>
+      <tr><td>Decision</td><td><strong>${app.decision ? safe(formatStatus(app.decision)) : "—"}</strong></td></tr>
       <tr><td>Decision Remarks</td><td>${app.decisionRemarks ? escapeHtml(app.decisionRemarks) : "—"}</td></tr>
-      <tr><td>Assigned Officer</td><td>${app.assignedTo?.name ?? "Unassigned"} (${formatRole(app.assignedTo?.role)})</td></tr>
+      <tr><td>Assigned Officer</td><td>${safe(app.assignedTo?.name ?? "Unassigned")} (${safe(formatRole(app.assignedTo?.role))})</td></tr>
       <tr><td>Submitted Date</td><td>${new Date(app.submittedAt).toLocaleDateString()}</td></tr>
     </table>
 
@@ -164,11 +168,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .map(
           (s) => `
         <tr>
-          <td><strong>${STAGES[s.stageKey]?.label ?? s.stageKey}</strong></td>
+          <td><strong>${safe(STAGES[s.stageKey]?.label ?? s.stageKey)}</strong></td>
           <td>${new Date(s.enteredAt).toLocaleDateString()}</td>
           <td>${s.exitedAt ? new Date(s.exitedAt).toLocaleDateString() : "Active"}</td>
           <td>${s.exitedAt ? `${Math.max(1, differenceInCalendarDays(s.exitedAt, s.enteredAt))} day(s)` : "In progress"}</td>
-          <td>${s.outcome ? formatOutcome(s.outcome) : "Open"}</td>
+          <td>${s.outcome ? safe(formatOutcome(s.outcome)) : "Open"}</td>
         </tr>
       `
         )
@@ -186,10 +190,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .map(
           (o) => `
         <tr>
-          <td><strong>${formatStatus(o.kind)}</strong></td>
-          <td>${o.author.name}</td>
+          <td><strong>${safe(formatStatus(o.kind))}</strong></td>
+          <td>${safe(o.author.name)}</td>
           <td>${new Date(o.createdAt).toLocaleDateString()}</td>
-          <td>${o.text}</td>
+          <td>${safe(o.text)}</td>
         </tr>
       `
         )
@@ -209,8 +213,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .map(
           (d) => `
         <tr>
-          <td>${formatDeadlineKind(d.kind)}</td>
-          <td>${d.title}</td>
+          <td>${safe(formatDeadlineKind(d.kind))}</td>
+          <td>${safe(d.title)}</td>
           <td>${new Date(d.dueAt).toLocaleDateString()}</td>
           <td>${d.escalationLevel > 0 ? `Escalated L${d.escalationLevel}` : "None"}</td>
         </tr>

@@ -21,7 +21,10 @@ export default async function DocumentsPage() {
 
   const documents = await prisma.instDocument.findMany({
     where,
-    include: { institution: { select: { name: true } } },
+    include: {
+      institution: { select: { name: true } },
+      evidence: { orderBy: { uploadedAt: "desc" }, take: 1 },
+    },
     orderBy: { validUntil: "asc" },
   });
 
@@ -77,6 +80,10 @@ export default async function DocumentsPage() {
           validFrom: d.validFrom.toISOString(),
           validUntil: d.validUntil.toISOString(),
           status: d.status,
+          remarks: d.remarks,
+          evidence: d.evidence[0]
+            ? { id: d.evidence[0].id, fileName: d.evidence[0].fileName }
+            : null,
         }))}
         userRole={user.role}
         currentDateIso={now.toISOString()}
