@@ -5,15 +5,23 @@ import { differenceInCalendarDays } from "date-fns";
 import { getNow } from "@/lib/clock";
 import { formatDeadlineKind } from "@/lib/format";
 import Link from "next/link";
+import { ResolveEscalationButton } from "./ResolveEscalationButton";
 
-export default async function EscalationsPage() {
+export default async function EscalationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ showResolved?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/");
   if (!["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"].includes(user.role)) redirect("/dashboard");
 
   const now = await getNow();
+  const showResolved = (await searchParams).showResolved === "1";
 
-  const where: Record<string, unknown> = { escalationLevel: { gt: 0 }, state: "OPEN" };
+  const where: Record<string, unknown> = showResolved
+    ? { escalationResolvedAt: { not: null } }
+    : { escalationLevel: { gt: 0 }, state: "OPEN", escalationResolvedAt: null };
   if (user.role === "REGIONAL_OFFICER") where.regionId = user.regionId;
 
   const items = await prisma.deadlineItem.findMany({
@@ -36,6 +44,9 @@ export default async function EscalationsPage() {
           <h1 className="page-title">Escalations</h1>
           <p className="page-subtitle">{items.length} open escalated item(s)</p>
         </div>
+        <Link href={showResolved ? "/escalations" : "/escalations?showResolved=1"} className="btn btn-secondary btn-sm">
+          {showResolved ? "Show Open" : "Show Resolved"}
+        </Link>
       </div>
 
       <div className="kpi-grid" style={{ marginBottom: 24 }}>
@@ -103,15 +114,18 @@ export default async function EscalationsPage() {
                       {lastEsc?.escalatedTo.name ?? "Senior Officer"}
                     </td>
                     <td>
-                      {item.applicationId ? (
-                        <Link href={`/applications/${item.applicationId}`} className="btn btn-primary btn-sm">
-                          Open
-                        </Link>
-                      ) : (
-                        <Link href="/undertakings" className="btn btn-secondary btn-sm">
-                          View
-                        </Link>
-                      )}
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {item.applicationId ? (
+                          <Link href={`/applications/${item.applicationId}`} className="btn btn-primary btn-sm">
+                            Open
+                          </Link>
+                        ) : (
+                          <Link href="/undertakings" className="btn btn-secondary btn-sm">
+                            View
+                          </Link>
+                        )}
+                        {!item.escalationResolvedAt && <ResolveEscalationButton id={item.id} />}
+                      </div>
                     </td>
                   </tr>
                 );

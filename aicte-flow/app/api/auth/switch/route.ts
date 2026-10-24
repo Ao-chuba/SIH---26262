@@ -5,6 +5,10 @@ import { prisma } from "@/lib/db";
 import { appendAudit } from "@/lib/audit";
 
 export async function POST(request: NextRequest) {
+  // Demo-only passwordless persona switching; production must explicitly opt in.
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_AUTH !== "1") {
+    return NextResponse.json({ error: "Demo authentication is disabled" }, { status: 403 });
+  }
   const { userId } = await request.json();
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -21,5 +25,8 @@ export async function POST(request: NextRequest) {
     payload: { userId, role: user.role },
   });
 
-  return NextResponse.json({ ok: true, user: { id: user.id, name: user.name, role: user.role } });
+  return NextResponse.json(
+    { ok: true, user: { id: user.id, name: user.name, role: user.role } },
+    { headers: { "X-Demo-Auth": "1" } }
+  );
 }

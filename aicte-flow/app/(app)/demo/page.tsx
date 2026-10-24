@@ -1,8 +1,10 @@
-import { getCurrentUser } from "@/lib/auth";
+import { COOKIE_NAME, getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { formatStage, formatStatus } from "@/lib/format";
+import { cookies } from "next/headers";
+import { appendAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,7 @@ const GOLDEN = [
     refNo: "DEMO-INTAKE-004",
     hint: "Open the returned intake file → reply (≥10 chars) → resumes Re-Scrutiny.",
     roleHint: "INSTITUTION",
+    switchTargets: [{ email: "inst.1.apex@demo.aicte", label: "Switch to Institution" }],
   },
   {
     step: 2,
@@ -22,14 +25,19 @@ const GOLDEN = [
     refNo: "DEMO-NEW-INST-001",
     hint: "Advance scrutiny (or return with APH deficiency draft). Prefer Advance to place into EVC Queue.",
     roleHint: "REGIONAL_OFFICER",
+    switchTargets: [{ email: "ro.central.alpha@demo.aicte", label: "Switch to RO" }],
   },
   {
     step: 3,
     title: "EVC schedule + report",
     account: "ro.central.alpha@demo.aicte → evc.member1@demo.aicte",
     refNo: "DEMO-NEW-COURSE-002",
-    hint: "RO schedules visit on /evc/[id]; switch to EVC and submit reportRef.",
-    roleHint: "EVC_COMMITTEE",
+    hint: "RO schedules the queued visit, then EVC Member 1 submits the report reference.",
+    roleHint: "REGIONAL_OFFICER → EVC_COMMITTEE",
+    switchTargets: [
+      { email: "ro.central.alpha@demo.aicte", label: "Switch to RO & schedule" },
+      { email: "evc.member1@demo.aicte", label: "Switch to EVC & complete" },
+    ],
   },
   {
     step: 4,
@@ -38,6 +46,7 @@ const GOLDEN = [
     refNo: "DEMO-EXTENSION-003",
     hint: "At Decision Pending → Approve with Conditions → creates undertaking deadline.",
     roleHint: "BUREAU_OFFICER",
+    switchTargets: [{ email: "bo.alpha@demo.aicte", label: "Switch to Bureau" }],
   },
   {
     step: 5,
@@ -46,6 +55,7 @@ const GOLDEN = [
     refNo: null,
     hint: "Admin → advance simulated clock past due dates → Run tick → open Escalations & Notifications delivery log.",
     roleHint: "ADMIN",
+    switchTargets: [{ email: "admin@demo.aicte", label: "Switch to Admin" }],
     links: [
       { href: "/admin?tab=clock", label: "Admin clock / tick" },
       { href: "/escalations", label: "Escalations" },
@@ -59,6 +69,7 @@ const GOLDEN = [
     refNo: null,
     hint: "Open Audit Trail → Verify chain. Use tamper only to show detection, then repair.",
     roleHint: "ADMIN",
+    switchTargets: [{ email: "admin@demo.aicte", label: "Switch to Admin" }],
     links: [{ href: "/audit", label: "Audit trail" }],
   },
 ] as const;
@@ -75,9 +86,27 @@ export default async function DemoPlaybookPage() {
       currentStageKey: true,
       status: true,
       institution: { select: { name: true } },
+      evcVisit: { select: { id: true } },
     },
   });
   const byRef = Object.fromEntries(demos.map((d) => [d.refNo, d]));
+
+  async function switchToAndGo(userEmail: string, href: string) {
+    "use server";
+    const picked = await prisma.user.findUnique({ where: { email: userEmail } });
+    if (!picked) throw new Error(`Seeded demo account not found: ${userEmail}`);
+    const cookieStore = await cookies();
+    cookieStore.set(COOKIE_NAME, picked.id, { httpOnly: true, path: "/", sameSite: "lax" });
+    await appendAudit({
+      actorId: picked.id,
+      actorRole: picked.role,
+      action: "LOGIN_SWITCH",
+      entityType: "User",
+      entityId: picked.id,
+      payload: { userId: picked.id, role: picked.role, source: "jury-demo" },
+    });
+    redirect(href.startsWith("/") && !href.startsWith("//") ? href : "/demo");
+  }
 
   return (
     <div>
@@ -193,8 +222,24 @@ export default async function DemoPlaybookPage() {
                     ) : null}
                   </p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {g.switchTargets.map((target) => {
+                      const href = app
+                        ? g.step === 3 && app.evcVisit
+                          ? `/evc/${app.evcVisit.id}`
+                          : `/applications/${app.id}`
+                        : "links" in g && g.links?.[0]
+                          ? g.links[0].href
+                          : "/demo";
+                      return (
+                        <form key={target.email} action={switchToAndGo.bind(null, target.email, href)}>
+                          <button type="submit" className="btn btn-primary btn-sm">
+                            {target.label} &rarr;
+                          </button>
+                        </form>
+                      );
+                    })}
                     {app && (
-                      <Link href={`/applications/${app.id}`} className="btn btn-primary btn-sm">
+                      <Link href={`/applications/${app.id}`} className="btn btn-secondary btn-sm">
                         Open {g.refNo}
                       </Link>
                     )}

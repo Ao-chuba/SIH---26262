@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma db push --accept-data-loss && tsx prisma/seed.ts && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "seed": "npx prisma db push && tsx prisma/seed.ts",
     "tick": "tsx scripts/tick.ts",
-    "test": "tsx --test src/lib/workflow/routes.test.ts"
+    "test": "tsx --test src/**/*.test.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

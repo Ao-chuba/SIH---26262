@@ -23,6 +23,7 @@ export default async function UndertakingsPage() {
     include: {
       application: { select: { refNo: true } },
       institution: { select: { name: true } },
+      evidence: { orderBy: { uploadedAt: "desc" }, take: 1 },
     },
     orderBy: { dueDate: "asc" },
   });
@@ -63,6 +64,9 @@ export default async function UndertakingsPage() {
           dueDate: u.dueDate.toISOString(),
           status: u.status,
           remarks: u.remarks,
+          evidence: u.evidence[0]
+            ? { id: u.evidence[0].id, fileName: u.evidence[0].fileName, note: u.evidence[0].note }
+            : null,
         }))}
         userRole={user.role}
         currentDateIso={now.toISOString()}
