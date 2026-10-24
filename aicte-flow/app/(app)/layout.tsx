@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { SidebarNav } from "./SidebarNav";
+import { SidebarToggle } from "./SidebarToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -163,6 +164,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       {/* Topbar */}
       <header className="topbar">
+        <SidebarToggle />
         <div className="topbar-title" id="page-title">
           <span>AICTE Approval Workflow</span>
         </div>
