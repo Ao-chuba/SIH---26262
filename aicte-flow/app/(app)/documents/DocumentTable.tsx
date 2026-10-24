@@ -31,7 +31,10 @@ export function DocumentTable({
   const [newValidUntil, setNewValidUntil] = useState(
     new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10)
   );
-  const [renewalFileName, setRenewalFileName] = useState("registered_lease_extension.pdf");
+  const [renewalFileName, setRenewalFileName] = useState("");
+  const [renewalFilePath, setRenewalFilePath] = useState("");
+  const [renewalMime, setRenewalMime] = useState("");
+  const [renewalSize, setRenewalSize] = useState(0);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -47,20 +50,34 @@ export function DocumentTable({
   async function handleRenew(e: React.FormEvent) {
     e.preventDefault();
     if (!activeRenewId) return;
+    if (!renewalFilePath || !renewalSize) {
+      setErrorMsg("Attach a PDF via the file picker before submitting.");
+      return;
+    }
     setLoading(true);
+    setErrorMsg(null);
     try {
-      await fetch(`/api/documents/${activeRenewId}/renew`, {
+      const res = await fetch(`/api/documents/${activeRenewId}/renew`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           validUntil: new Date(newValidUntil).toISOString(),
           fileName: renewalFileName,
+          filePath: renewalFilePath,
+          mimeType: renewalMime,
+          sizeBytes: renewalSize,
         }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Renewal failed");
       setActiveRenewId(null);
+      setRenewalFileName("");
+      setRenewalFilePath("");
+      setRenewalMime("");
+      setRenewalSize(0);
       router.refresh();
-    } catch {
-      setErrorMsg("Failed to submit renewal.");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to submit renewal.");
     } finally {
       setLoading(false);
     }
@@ -119,11 +136,19 @@ export function DocumentTable({
                   fd.append("file", f);
                   const r = await fetch("/api/upload", { method: "POST", body: fd });
                   const d = await r.json();
-                  if (r.ok) setRenewalFileName(d.fileName || f.name);
+                  if (r.ok) {
+                    setRenewalFileName(d.fileName || f.name);
+                    setRenewalFilePath(d.filePath);
+                    setRenewalMime(d.mimeType || f.type || "application/pdf");
+                    setRenewalSize(Number(d.sizeBytes) || f.size);
+                  } else {
+                    setErrorMsg(d.error || "Upload failed");
+                  }
                 }}
               />
               <small style={{ color: "var(--forest-muted)", fontSize: 12 }}>
-                Selected: <strong>{renewalFileName}</strong>
+                Selected: <strong>{renewalFileName || "none"}</strong>
+                {renewalSize > 0 ? ` · ${renewalSize.toLocaleString()} bytes` : ""}
               </small>
             </div>
             <div className="modal-actions">
