@@ -11,6 +11,10 @@ export default async function DocumentsPage() {
 
   const now = await getNow();
 
+  if (!["INSTITUTION", "REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"].includes(user.role)) {
+    redirect("/dashboard");
+  }
+
   const where: Record<string, unknown> = {};
   if (user.role === "INSTITUTION") where.institutionId = user.institutionId;
   if (user.role === "REGIONAL_OFFICER") where.institution = { regionId: user.regionId };

@@ -4,9 +4,12 @@ import { getNow } from "@/lib/clock";
 import { differenceInCalendarDays } from "date-fns";
 import { STAGES } from "@/config/rules";
 import { formatAppType, formatDeadlineKind, formatOutcome, formatRole, formatRoute, formatStatus } from "@/lib/format";
+import { canViewApplication, requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const user = await requireAuth().catch(() => null);
+  if (!user) return new NextResponse("Unauthorized", { status: 401 });
 
   const app = await prisma.application.findUnique({
     where: { id },
@@ -17,10 +20,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       observations: { orderBy: { createdAt: "asc" }, include: { author: { select: { name: true, role: true } } } },
       deadlineItems: { where: { state: "OPEN" } },
       undertakings: true,
+      evcVisit: { select: { committeeId: true } },
     },
   });
 
   if (!app) return new NextResponse("Not found", { status: 404 });
+  if (!canViewApplication(user, app, app.evcVisit?.committeeId)) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
 
   const now = await getNow();
 

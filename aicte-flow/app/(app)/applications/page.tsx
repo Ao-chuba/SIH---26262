@@ -35,18 +35,35 @@ export default async function ApplicationsPage({
   const params = await searchParams;
   const now = await getNow();
 
-  const where: Record<string, unknown> = {};
-  if (user.role === "INSTITUTION") where.institutionId = user.institutionId;
-  if (user.role === "REGIONAL_OFFICER") where.regionId = user.regionId;
-  if (params.regionId) where.regionId = params.regionId;
-  if (params.status) where.status = params.status;
-  if (params.stage) where.currentStageKey = params.stage;
-  if (params.search) {
-    where.OR = [
-      { refNo: { contains: params.search } },
-      { institution: { name: { contains: params.search } } },
+  const scope: Record<string, unknown> = {};
+  if (user.role === "INSTITUTION") scope.institutionId = user.institutionId;
+  if (user.role === "REGIONAL_OFFICER") scope.regionId = user.regionId;
+  else if ((user.role === "BUREAU_OFFICER" || user.role === "ADMIN") && params.regionId) {
+    scope.regionId = params.regionId;
+  }
+  if (user.role === "EVC_COMMITTEE") {
+    scope.OR = [
+      { evcVisit: { committeeId: user.id } },
+      {
+        currentStageKey: { in: ["EVC_QUEUE", "EVC_SCHEDULED", "EVC_REPORT"] },
+        evcVisit: { committeeId: null },
+      },
     ];
   }
+  if (user.role === "SAC_SHC_MEMBER") scope.currentStageKey = "SAC_SHC";
+
+  const filters: Record<string, unknown>[] = [scope];
+  if (params.status) filters.push({ status: params.status });
+  if (params.stage && user.role !== "SAC_SHC_MEMBER") filters.push({ currentStageKey: params.stage });
+  if (params.search) {
+    filters.push({
+      OR: [
+        { refNo: { contains: params.search } },
+        { institution: { name: { contains: params.search } } },
+      ],
+    });
+  }
+  const where = filters.length === 1 ? scope : { AND: filters };
 
   const applications = await prisma.application.findMany({
     where,
@@ -85,7 +102,7 @@ export default async function ApplicationsPage({
           <h1 className="page-title">Applications</h1>
           <p className="page-subtitle">{applications.length} application(s)</p>
         </div>
-        {(user.role === "INSTITUTION" || user.role === "ADMIN") && (
+        {user.role === "INSTITUTION" && (
           <Link href="/applications/new" className="btn btn-primary">
             + New Application
           </Link>
