@@ -65,6 +65,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", roles: ["all"] },
+    { href: "/demo", label: "Jury Demo", roles: ["all"] },
     { href: "/applications", label: "Applications", roles: ["all"] },
     ...(!isInstitution
       ? [

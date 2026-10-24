@@ -332,6 +332,10 @@ export default async function LoginPage() {
             Sign in as a specific account
           </span>
           <AccountSelector users={userOptions} switchUserAction={switchUser} />
+          <p style={{ marginTop: 14, fontSize: 12.5, color: "var(--forest-muted)" }}>
+            After entry, open <strong style={{ color: "var(--forest)" }}>Jury Demo</strong> in the sidebar for the
+            SIH26262 golden path (DEMO-* dockets → tick → audit).
+          </p>
         </div>
       </main>
     </div>
