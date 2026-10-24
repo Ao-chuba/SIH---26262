@@ -13,6 +13,7 @@ import {
   BarChart3,
   History,
   Settings,
+  Waypoints,
   type LucideIcon,
 } from "lucide-react";
 
@@ -32,6 +33,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "/reports": BarChart3,
   "/audit": History,
   "/admin": Settings,
+  "/demo": Waypoints,
 };
 
 export function SidebarNav({

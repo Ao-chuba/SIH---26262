@@ -25,6 +25,10 @@ export function EvcActionForm({
   const [committeeId, setCommitteeId] = useState(evc.committeeId ?? (committeeMembers[0]?.id || ""));
   const [isNewInstitution, setIsNewInstitution] = useState(evc.isNewInstitution);
   const [reportRef, setReportRef] = useState(evc.reportRef ?? `EVC-REPORT-${evc.application.refNo}`);
+  const [findingsSummary, setFindingsSummary] = useState("");
+  const [recommendation, setRecommendation] = useState<
+    "SATISFACTORY" | "DEFICIENT" | "RECOMMEND_HEARING"
+  >("SATISFACTORY");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,13 +59,17 @@ export function EvcActionForm({
 
   async function handleComplete(e: React.FormEvent) {
     e.preventDefault();
+    if (findingsSummary.trim().length < 20) {
+      setError("Inspection findings must be at least 20 characters");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/evc/${evc.id}/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reportRef }),
+        body: JSON.stringify({ reportRef, findingsSummary, recommendation }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Failed to complete EVC visit");
@@ -103,7 +111,6 @@ export function EvcActionForm({
         </div>
       )}
 
-      {/* Case Overview */}
       <div className="card" style={{ marginBottom: 20 }}>
         <div className="card-header">
           <span className="card-title">Case Details</span>
@@ -136,7 +143,6 @@ export function EvcActionForm({
         </div>
       </div>
 
-      {/* Schedule Form */}
       {evc.status === "QUEUED" && canSchedule && (
         <form onSubmit={handleSchedule} className="card">
           <div className="card-header">
@@ -194,12 +200,15 @@ export function EvcActionForm({
         </div>
       )}
 
-      {/* Complete Visit Form */}
       {evc.status === "SCHEDULED" && canComplete && (
         <form onSubmit={handleComplete} className="card">
           <div className="card-header">
-            <span className="card-title">Submit Inspection Report</span>
+            <span className="card-title">Register Inspection Report</span>
           </div>
+          <p style={{ fontSize: 12.5, color: "var(--forest-muted)", margin: "0 0 14px" }}>
+            Registers the visit outcome and advances the docket to EVC Report Review. Full statutory inspection
+            dossiers remain with the competent authority process.
+          </p>
           <div className="form-group">
             <label className="form-label">Report Reference Number *</label>
             <input
@@ -207,6 +216,31 @@ export function EvcActionForm({
               className="form-input"
               value={reportRef}
               onChange={(e) => setReportRef(e.target.value)}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Committee Recommendation *</label>
+            <select
+              className="form-select"
+              value={recommendation}
+              onChange={(e) =>
+                setRecommendation(e.target.value as "SATISFACTORY" | "DEFICIENT" | "RECOMMEND_HEARING")
+              }
+            >
+              <option value="SATISFACTORY">Satisfactory — recommend proceed</option>
+              <option value="DEFICIENT">Deficient — deficiencies noted</option>
+              <option value="RECOMMEND_HEARING">Recommend SAC/SHC hearing</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Findings Summary * (min 20 characters)</label>
+            <textarea
+              className="form-input"
+              rows={4}
+              value={findingsSummary}
+              onChange={(e) => setFindingsSummary(e.target.value)}
+              placeholder="Campus infrastructure, faculty presence, labs, and other inspection observations..."
               required
             />
           </div>
@@ -229,7 +263,6 @@ export function EvcActionForm({
         </div>
       )}
 
-      {/* Completed State */}
       {evc.status === "COMPLETED" && (
         <div className="card" style={{ background: "var(--green-bg)", border: "1.5px solid var(--green-border)" }}>
           <h3 style={{ margin: "0 0 6px 0", color: "var(--green)" }}>Inspection Completed</h3>

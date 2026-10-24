@@ -40,6 +40,8 @@ export function DocumentTable({
   const [renewalSize, setRenewalSize] = useState(0);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [verifyTarget, setVerifyTarget] = useState<{ id: string; verified: boolean } | null>(null);
+  const [verifyRemarks, setVerifyRemarks] = useState("");
 
   const filtered = documents.filter((doc) => {
     const days = differenceInCalendarDays(new Date(doc.validUntil), now);
@@ -86,19 +88,24 @@ export function DocumentTable({
     }
   }
 
-  async function handleVerify(docId: string, verified: boolean) {
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault();
+    if (!verifyTarget) return;
     setLoading(true);
     setErrorMsg(null);
     try {
-      const remarks = window.prompt(verified ? "Verification remarks" : "Rejection remarks")?.trim();
-      if (remarks == null) return;
-      const res = await fetch(`/api/documents/${docId}/verify`, {
+      const res = await fetch(`/api/documents/${verifyTarget.id}/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ verified, remarks }),
+        body: JSON.stringify({
+          verified: verifyTarget.verified,
+          remarks: verifyRemarks.trim() || undefined,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Verification failed");
+      setVerifyTarget(null);
+      setVerifyRemarks("");
       router.refresh();
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : "Failed to verify document renewal.");
@@ -114,6 +121,43 @@ export function DocumentTable({
           {errorMsg}
         </div>
       )}
+      {verifyTarget && (
+        <div className="modal-overlay" onClick={() => !loading && setVerifyTarget(null)}>
+          <form onSubmit={handleVerify} className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">
+              {verifyTarget.verified ? "Verify Document Renewal" : "Reject Document Renewal"}
+            </div>
+            <div className="form-group">
+              <label className="form-label">Remarks {verifyTarget.verified ? "(optional)" : "*"}</label>
+              <textarea
+                className="form-input"
+                rows={3}
+                value={verifyRemarks}
+                onChange={(e) => setVerifyRemarks(e.target.value)}
+                placeholder={
+                  verifyTarget.verified
+                    ? "Optional verification note..."
+                    : "Reason for rejection..."
+                }
+                required={!verifyTarget.verified}
+              />
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" disabled={loading} onClick={() => setVerifyTarget(null)}>
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className={verifyTarget.verified ? "btn btn-success" : "btn btn-danger"}
+              >
+                {loading ? "Saving..." : verifyTarget.verified ? "Confirm Verify" : "Confirm Reject"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Upload Renewal Modal */}
       {activeRenewId && (
         <div className="modal-overlay" onClick={() => setActiveRenewId(null)}>
@@ -270,16 +314,24 @@ export function DocumentTable({
                           doc.status === "RENEWAL_SUBMITTED" && (
                             <>
                               <button
+                                type="button"
                                 className="btn btn-success btn-sm"
                                 disabled={loading}
-                                onClick={() => handleVerify(doc.id, true)}
+                                onClick={() => {
+                                  setVerifyRemarks("");
+                                  setVerifyTarget({ id: doc.id, verified: true });
+                                }}
                               >
                                 Verify
                               </button>
                               <button
+                                type="button"
                                 className="btn btn-danger btn-sm"
                                 disabled={loading}
-                                onClick={() => handleVerify(doc.id, false)}
+                                onClick={() => {
+                                  setVerifyRemarks("");
+                                  setVerifyTarget({ id: doc.id, verified: false });
+                                }}
                               >
                                 Reject
                               </button>
