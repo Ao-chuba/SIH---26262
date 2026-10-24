@@ -19,7 +19,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const { searchParams } = new URL(request.url);
   const format = searchParams.get("format");
   const now = await getNow();
-  const appRegionWhere = user.role === "REGIONAL_OFFICER" ? { regionId: user.regionId! } : {};
+  const isRo = user.role === "REGIONAL_OFFICER";
+  const regionId = user.regionId!;
+  const appRegionWhere = isRo ? { regionId } : {};
+  const evcRegionWhere = isRo ? { application: { regionId } } : {};
+  const instRegionWhere = isRo ? { institution: { regionId } } : {};
+  const deadlineRegionWhere = isRo ? { regionId } : {};
 
   if (type === "pendency") {
     const apps = await prisma.application.findMany({
@@ -44,6 +49,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   if (type === "evc") {
     const visits = await prisma.evcVisit.findMany({
+      where: evcRegionWhere,
       include: { application: { include: { institution: { select: { name: true, type: true } } } } },
     });
     const data = visits.map((v) => ({
@@ -60,6 +66,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   if (type === "undertakings") {
     const uts = await prisma.undertaking.findMany({
+      where: instRegionWhere,
       include: { institution: { select: { name: true } }, application: { select: { refNo: true } } },
     });
     const data = uts.map((u) => ({
@@ -75,6 +82,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   if (type === "documents") {
     const docs = await prisma.instDocument.findMany({
+      where: instRegionWhere,
       include: { institution: { select: { name: true } } },
     });
     const data = docs.map((d) => ({
@@ -90,7 +98,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   if (type === "overdue") {
     const items = await prisma.deadlineItem.findMany({
-      where: { state: "OPEN", dueAt: { lt: now } },
+      where: { state: "OPEN", dueAt: { lt: now }, ...deadlineRegionWhere },
       include: { application: { select: { refNo: true } } },
     });
     const data = items.map((i) => ({
@@ -105,6 +113,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   if (type === "region-performance") {
+    if (isRo) {
+      return NextResponse.json({ error: "Regional officers cannot export all-region performance" }, { status: 403 });
+    }
     const regions = await prisma.region.findMany();
     const data = await Promise.all(regions.map(async (r) => {
       const apps = await prisma.application.count({ where: { regionId: r.id } });

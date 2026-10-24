@@ -29,7 +29,17 @@ export default async function NotificationsPage({
     }),
     canSeeDelivery
       ? prisma.notification.findMany({
-          where: { channel: { in: ["EMAIL", "SMS"] } },
+          where: {
+            channel: { in: ["EMAIL", "SMS"] },
+            ...(user.role === "REGIONAL_OFFICER" && user.regionId
+              ? {
+                  OR: [
+                    { toUser: { regionId: user.regionId } },
+                    { toUser: { institution: { regionId: user.regionId } } },
+                  ],
+                }
+              : {}),
+          },
           include: { toUser: { select: { name: true, email: true, role: true } } },
           orderBy: { createdAt: "desc" },
           take: 100,
@@ -39,9 +49,14 @@ export default async function NotificationsPage({
 
   async function markRead(formData: FormData) {
     "use server";
+    const current = await getCurrentUser();
+    if (!current) return;
     const id = formData.get("id") as string;
     if (!id) return;
-    await prisma.notification.update({ where: { id }, data: { readAt: new Date() } });
+    await prisma.notification.updateMany({
+      where: { id, toUserId: current.id },
+      data: { readAt: new Date() },
+    });
     redirect("/notifications");
   }
 
