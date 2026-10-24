@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { differenceInCalendarDays } from "date-fns";
 import { getNow } from "@/lib/clock";
+import { formatDeadlineKind } from "@/lib/format";
 import Link from "next/link";
 
 export default async function EscalationsPage() {
@@ -18,7 +19,10 @@ export default async function EscalationsPage() {
   const items = await prisma.deadlineItem.findMany({
     where,
     include: {
-      escalationEvents: { include: { escalatedTo: { select: { name: true, role: true } } }, orderBy: { createdAt: "desc" } },
+      escalationEvents: {
+        include: { escalatedTo: { select: { name: true, role: true } } },
+        orderBy: { createdAt: "desc" },
+      },
       application: { select: { refNo: true } },
     },
     orderBy: [{ escalationLevel: "desc" }, { dueAt: "asc" }],
@@ -30,26 +34,43 @@ export default async function EscalationsPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Escalations</h1>
-          <p className="page-subtitle">{items.length} escalated item(s) open</p>
+          <p className="page-subtitle">{items.length} open escalated item(s)</p>
         </div>
       </div>
 
       <div className="kpi-grid" style={{ marginBottom: 24 }}>
-        {[1, 2, 3].map((level) => (
-          <div key={level} className={`kpi-card ${level === 3 ? "red" : level === 2 ? "amber" : "purple"}`}>
-            <div className="kpi-label">Level {level} Escalations</div>
-            <div className="kpi-value" style={{ color: level === 3 ? "#ef4444" : level === 2 ? "#f59e0b" : "#a855f7" }}>
-              {items.filter((i) => i.escalationLevel === level).length}
+        {[
+          { level: 1, title: "Level 1", sub: "Senior Regional Officer", cls: "purple", color: "var(--purple)" },
+          { level: 2, title: "Level 2", sub: "Bureau Officer", cls: "amber", color: "var(--amber)" },
+          { level: 3, title: "Level 3", sub: "Directorate", cls: "red", color: "var(--red)" },
+        ].map((meta) => (
+          <div key={meta.level} className={`kpi-card ${meta.cls}`}>
+            <div className="kpi-label">{meta.title}</div>
+            <div className="kpi-value" style={{ color: meta.color }}>
+              {items.filter((i) => i.escalationLevel === meta.level).length}
             </div>
+            <div className="kpi-sub">{meta.sub}</div>
           </div>
         ))}
       </div>
 
       <div className="card">
+        <div className="card-header">
+          <span className="card-title">Escalated Deadlines</span>
+          <span className="badge badge-purple">{items.length}</span>
+        </div>
         <div style={{ overflowX: "auto" }}>
           <table className="data-table">
             <thead>
-              <tr><th>Title</th><th>Kind</th><th>Due</th><th>Overdue</th><th>Esc. Level</th><th>Escalated To</th><th>Actions</th></tr>
+              <tr>
+                <th>Item</th>
+                <th>Kind</th>
+                <th>Due Date</th>
+                <th>Overdue</th>
+                <th>Level</th>
+                <th>Escalated To</th>
+                <th>Action</th>
+              </tr>
             </thead>
             <tbody>
               {items.map((item) => {
@@ -59,27 +80,52 @@ export default async function EscalationsPage() {
                   <tr key={item.id}>
                     <td>
                       {item.applicationId ? (
-                        <Link href={`/applications/${item.applicationId}`} style={{ color: "#2a5298" }}>{item.title}</Link>
-                      ) : item.title}
+                        <Link href={`/applications/${item.applicationId}`} className="table-link">
+                          {item.title}
+                        </Link>
+                      ) : (
+                        <span style={{ fontWeight: 600 }}>{item.title}</span>
+                      )}
                     </td>
-                    <td><span className="badge badge-blue">{item.kind.replace("_", " ")}</span></td>
+                    <td><span className="badge badge-blue">{formatDeadlineKind(item.kind)}</span></td>
                     <td>{new Date(item.dueAt).toLocaleDateString()}</td>
-                    <td><span className="sla-chip red">[OVERDUE {Math.max(0, overdueDays)}d]</span></td>
+                    <td><span className="sla-chip red">Overdue {Math.max(0, overdueDays)}d</span></td>
                     <td>
-                      <span className={`sla-chip ${item.escalationLevel >= 3 ? "red" : item.escalationLevel === 2 ? "amber" : "purple"}`}>
-                        [ESC:L{item.escalationLevel}]
+                      <span
+                        className={`sla-chip ${
+                          item.escalationLevel >= 3 ? "red" : item.escalationLevel === 2 ? "amber" : "purple"
+                        }`}
+                      >
+                        L{item.escalationLevel}
                       </span>
                     </td>
-                    <td style={{ fontSize: 12 }}>{lastEsc?.escalatedTo.name ?? "—"} ({lastEsc?.escalatedTo.role.split("_")[0] ?? "—"})</td>
+                    <td style={{ fontSize: 12.5, fontWeight: 600 }}>
+                      {lastEsc?.escalatedTo.name ?? "Senior Officer"}
+                    </td>
                     <td>
-                      {item.applicationId && (
-                        <Link href={`/applications/${item.applicationId}`} className="btn btn-primary btn-sm">Acknowledge & Act</Link>
+                      {item.applicationId ? (
+                        <Link href={`/applications/${item.applicationId}`} className="btn btn-primary btn-sm">
+                          Open
+                        </Link>
+                      ) : (
+                        <Link href="/undertakings" className="btn btn-secondary btn-sm">
+                          View
+                        </Link>
                       )}
                     </td>
                   </tr>
                 );
               })}
-              {items.length === 0 && <tr><td colSpan={7}><div className="empty-state"><h3>No Escalations</h3><p>All items are within SLA.</p></div></td></tr>}
+              {items.length === 0 && (
+                <tr>
+                  <td colSpan={7}>
+                    <div className="empty-state">
+                      <h3>No Open Escalations</h3>
+                      <p>All items are within SLA.</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

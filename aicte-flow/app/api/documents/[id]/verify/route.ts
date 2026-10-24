@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/auth";
+import { isDenied, requireRoleResponse } from "@/lib/auth";
 import { verifyDocument } from "@/lib/workflow/workflow";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const user = await requireRole(["REGIONAL_OFFICER", "ADMIN", "BUREAU_OFFICER"]);
+  const user = await requireRoleResponse(["REGIONAL_OFFICER", "ADMIN", "BUREAU_OFFICER"]);
+  if (isDenied(user)) return user;
   let verified = true;
   let remarks = "";
   const contentType = request.headers.get("content-type") || "";

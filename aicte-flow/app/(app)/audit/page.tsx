@@ -23,18 +23,12 @@ export default async function AuditPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Tamper-Evident Audit Trail</h1>
-          <p className="page-subtitle">Cryptographic SHA-256 Hash-Chained System Ledger</p>
+          <h1 className="page-title">Audit Ledger</h1>
+          <p className="page-subtitle">SHA-256 hash-chained event log</p>
         </div>
-        <div style={{ display: "flex", gap: 12 }}>
-          <a href="/api/audit?format=csv" className="btn btn-secondary">
-            [^] Export CSV
-          </a>
-        </div>
-      </div>
-
-      <div style={{ marginBottom: 20, padding: "14px 18px", background: "var(--card-bg)", borderRadius: 14, border: "1.5px solid var(--border)", fontSize: 13, color: "var(--muted)" }}>
-        <strong style={{ color: "var(--forest)" }}>[#] Immutability Guarantee:</strong> Every audit entry is cryptographically linked to the previous entry via SHA-256 hash chaining: <code>hash = sha256(prevHash + ts + actor + action + entity + payload)</code>. Any database modification or row deletion invalidates the chain.
+        <a href="/api/audit?format=csv" className="btn btn-secondary btn-sm">
+          Export CSV &rarr;
+        </a>
       </div>
 
       <AuditTable

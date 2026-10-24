@@ -1,9 +1,8 @@
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { differenceInCalendarDays } from "date-fns";
-import { getNow } from "@/lib/clock";
-import Link from "next/link";
+import { STAGES } from "@/config/rules";
+import { formatStage, formatStatus } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -12,66 +11,71 @@ export default async function ReportsPage() {
   if (!user) redirect("/");
   if (!["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"].includes(user.role)) redirect("/dashboard");
 
-  const now = await getNow();
+  const regionWhere = user.role === "REGIONAL_OFFICER" ? { regionId: user.regionId! } : {};
+  const evcRegionWhere = user.role === "REGIONAL_OFFICER" ? { application: { regionId: user.regionId! } } : {};
+  const utRegionWhere = user.role === "REGIONAL_OFFICER" ? { institution: { regionId: user.regionId! } } : {};
 
   const [
-    totalApps, inProgress, returned, decided,
-    stageBreakdown, evcStats, undertakingStats, docStats, escalatedCount,
-    regions,
+    totalApps,
+    inProgress,
+    returned,
+    decided,
+    stageBreakdown,
+    evcStats,
+    undertakingStats,
+    escalatedCount,
   ] = await Promise.all([
-    prisma.application.count(),
-    prisma.application.count({ where: { status: "IN_PROGRESS" } }),
-    prisma.application.count({ where: { status: "RETURNED" } }),
-    prisma.application.count({ where: { status: "DECIDED" } }),
-    prisma.application.groupBy({ by: ["currentStageKey"], _count: { id: true } }),
-    prisma.evcVisit.groupBy({ by: ["status"], _count: { id: true } }),
-    prisma.undertaking.groupBy({ by: ["status"], _count: { id: true } }),
-    prisma.instDocument.groupBy({ by: ["status"], _count: { id: true } }),
-    prisma.deadlineItem.count({ where: { escalationLevel: { gt: 0 }, state: "OPEN" } }),
-    prisma.region.findMany(),
+    prisma.application.count({ where: regionWhere }),
+    prisma.application.count({ where: { ...regionWhere, status: "IN_PROGRESS" } }),
+    prisma.application.count({ where: { ...regionWhere, status: "RETURNED" } }),
+    prisma.application.count({ where: { ...regionWhere, status: "DECIDED" } }),
+    prisma.application.groupBy({ by: ["currentStageKey"], where: regionWhere, _count: { id: true } }),
+    prisma.evcVisit.groupBy({ by: ["status"], where: evcRegionWhere, _count: { id: true } }),
+    prisma.undertaking.groupBy({ by: ["status"], where: utRegionWhere, _count: { id: true } }),
+    prisma.deadlineItem.count({ where: { ...regionWhere, escalationLevel: { gt: 0 }, state: "OPEN" } }),
   ]);
 
   const reportCards = [
     {
       id: "pendency",
-      title: "1. Application Pendency",
-      icon: "[01]",
-      desc: "Stage-wise breakdown with ageing",
+      title: "Application Pendency",
+      num: "01",
+      desc: "Stage-wise breakdown with ageing buckets.",
       exportUrl: "/api/reports/pendency?format=csv",
     },
     {
       id: "evc",
-      title: "2. EVC Status",
-      icon: "[02]",
-      desc: "Queued/Scheduled/Completed/Overdue, new-institution split",
+      title: "EVC Inspection Status",
+      num: "02",
+      desc: "Queued, scheduled, completed, and overdue visits.",
       exportUrl: "/api/reports/evc?format=csv",
     },
     {
       id: "undertakings",
-      title: "3. Undertaking Compliance",
-      icon: "[03]",
-      desc: "Granted/Verified/Overdue, % compliance",
+      title: "Undertaking Compliance",
+      num: "03",
+      desc: "Granted, submitted, verified, and overdue undertakings.",
       exportUrl: "/api/reports/undertakings?format=csv",
     },
     {
       id: "documents",
-      title: "4. Document Validity",
-      icon: "[04]",
-      desc: "Valid/Expiring/Expired by bucket",
+      title: "Document & Lease Validity",
+      num: "04",
+      desc: "Valid, expiring (≤90 days), and expired documents.",
       exportUrl: "/api/reports/documents?format=csv",
     },
     {
       id: "overdue",
-      title: "5. Overdue Cases",
-      icon: "[05]",
-      desc: "All kinds with escalation level",
+      title: "Overdue & Escalated Items",
+      num: "05",
+      desc: "All overdue deadline items with escalation levels.",
       exportUrl: "/api/reports/overdue?format=csv",
     },
     {
       id: "region-performance",
-      title: "6. Region-wise Performance",
-      icon: "[06]",
-      desc: "Avg days per stage, % within SLA",
+      title: "Regional SLA Performance",
+      num: "06",
+      desc: "Average stage duration and SLA compliance by region.",
       exportUrl: "/api/reports/region-performance?format=csv",
     },
   ];
@@ -81,78 +85,143 @@ export default async function ReportsPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Reports</h1>
-          <p className="page-subtitle">Six analytical reports with CSV export</p>
+          <p className="page-subtitle">Operational summaries and CSV exports</p>
         </div>
       </div>
 
       {/* Summary KPIs */}
       <div className="kpi-grid" style={{ marginBottom: 24 }}>
-        <div className="kpi-card"><div className="kpi-label">Total Applications</div><div className="kpi-value">{totalApps}</div></div>
-        <div className="kpi-card amber"><div className="kpi-label">In Progress</div><div className="kpi-value" style={{ color: "#f59e0b" }}>{inProgress}</div></div>
-        <div className="kpi-card"><div className="kpi-label">Returned</div><div className="kpi-value">{returned}</div></div>
-        <div className="kpi-card green"><div className="kpi-label">Decided</div><div className="kpi-value" style={{ color: "#22c55e" }}>{decided}</div></div>
-        <div className="kpi-card red"><div className="kpi-label">Escalated Items</div><div className="kpi-value" style={{ color: "#ef4444" }}>{escalatedCount}</div></div>
+        <div className="kpi-card">
+          <div className="kpi-label">Total Applications</div>
+          <div className="kpi-value">{totalApps}</div>
+        </div>
+        <div className="kpi-card amber">
+          <div className="kpi-label">In Progress</div>
+          <div className="kpi-value" style={{ color: "var(--amber)" }}>{inProgress}</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">Returned</div>
+          <div className="kpi-value">{returned}</div>
+        </div>
+        <div className="kpi-card green">
+          <div className="kpi-label">Decided</div>
+          <div className="kpi-value" style={{ color: "var(--green)" }}>{decided}</div>
+        </div>
+        <div className="kpi-card red">
+          <div className="kpi-label">Escalated</div>
+          <div className="kpi-value" style={{ color: "var(--red)" }}>{escalatedCount}</div>
+        </div>
       </div>
 
       {/* Report cards */}
-      <div className="grid-2" style={{ gap: 16, marginBottom: 24 }}>
+      <div className="grid-2" style={{ marginBottom: 24 }}>
         {reportCards.map((r) => (
-          <div key={r.id} className="card">
-            <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-              <span style={{ fontSize: 28 }}>{r.icon}</span>
+          <div key={r.id} className="card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+              <span
+                className="font-mono"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 800,
+                  background: "var(--highlighter-yellow)",
+                  color: "var(--forest)",
+                  border: "1.5px solid var(--forest)",
+                  padding: "5px 9px",
+                  borderRadius: 10,
+                  flexShrink: 0,
+                }}
+              >
+                {r.num}
+              </span>
               <div style={{ flex: 1 }}>
                 <div className="card-title">{r.title}</div>
-                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{r.desc}</p>
-                <a href={r.exportUrl} className="btn btn-secondary btn-sm" style={{ marginTop: 12 }}>
-                  ⬇️ Export CSV
-                </a>
+                <p style={{ fontSize: 12.5, color: "var(--forest-muted)", marginTop: 3 }}>{r.desc}</p>
               </div>
+            </div>
+            <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end" }}>
+              <a href={r.exportUrl} className="btn btn-secondary btn-sm">
+                Export CSV &rarr;
+              </a>
             </div>
           </div>
         ))}
       </div>
 
       {/* Stage breakdown inline */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-title" style={{ marginBottom: 16 }}>Application Pendency by Stage</div>
+      <div className="card" style={{ marginBottom: 18 }}>
+        <div className="card-header">
+          <span className="card-title">Applications by Stage</span>
+          <span className="badge badge-gray">{totalApps} total</span>
+        </div>
         <table className="data-table">
-          <thead><tr><th>Stage</th><th>Count</th><th>% of In-Progress</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Stage</th>
+              <th>Count</th>
+              <th>Share</th>
+            </tr>
+          </thead>
           <tbody>
-            {stageBreakdown.map((s) => (
-              <tr key={s.currentStageKey}>
-                <td>{s.currentStageKey.replace(/_/g, " ")}</td>
-                <td><strong>{s._count.id}</strong></td>
-                <td>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ flex: 1, height: 8, background: "#f0f4f8", borderRadius: 4, overflow: "hidden" }}>
-                      <div style={{ width: `${inProgress > 0 ? (s._count.id / inProgress * 100) : 0}%`, height: "100%", background: "#2a5298", borderRadius: 4 }} />
+            {stageBreakdown.map((s) => {
+              const pct = totalApps > 0 ? Math.round((s._count.id / totalApps) * 100) : 0;
+              return (
+                <tr key={s.currentStageKey}>
+                  <td style={{ fontWeight: 700 }}>
+                    {STAGES[s.currentStageKey]?.label ?? formatStage(s.currentStageKey)}
+                  </td>
+                  <td><strong>{s._count.id}</strong></td>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ flex: 1, height: 10, background: "var(--bg-subtle)", borderRadius: 9999, overflow: "hidden", border: "1px solid var(--border)" }}>
+                        <div style={{ width: `${pct}%`, height: "100%", background: "var(--forest)", borderRadius: 9999 }} />
+                      </div>
+                      <span className="font-mono" style={{ fontSize: 12, fontWeight: 700, width: 44 }}>{pct}%</span>
                     </div>
-                    <span style={{ fontSize: 12, width: 40 }}>{inProgress > 0 ? ((s._count.id / inProgress * 100).toFixed(0)) : 0}%</span>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
-      {/* EVC stats */}
-      <div className="grid-2" style={{ gap: 16 }}>
+      {/* EVC & Undertaking stats */}
+      <div className="grid-2">
         <div className="card">
-          <div className="card-title" style={{ marginBottom: 12 }}>EVC Status Breakdown</div>
+          <div className="card-header"><span className="card-title">EVC Status</span></div>
           <table className="data-table">
-            <thead><tr><th>Status</th><th>Count</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Count</th>
+              </tr>
+            </thead>
             <tbody>
-              {evcStats.map((e) => <tr key={e.status}><td>{e.status}</td><td><strong>{e._count.id}</strong></td></tr>)}
+              {evcStats.map((e) => (
+                <tr key={e.status}>
+                  <td><span className="badge badge-blue">{formatStatus(e.status)}</span></td>
+                  <td><strong>{e._count.id}</strong></td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
         <div className="card">
-          <div className="card-title" style={{ marginBottom: 12 }}>Undertaking Compliance</div>
+          <div className="card-header"><span className="card-title">Undertakings</span></div>
           <table className="data-table">
-            <thead><tr><th>Status</th><th>Count</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Count</th>
+              </tr>
+            </thead>
             <tbody>
-              {undertakingStats.map((u) => <tr key={u.status}><td>{u.status}</td><td><strong>{u._count.id}</strong></td></tr>)}
+              {undertakingStats.map((u) => (
+                <tr key={u.status}>
+                  <td><span className="badge badge-amber">{formatStatus(u.status)}</span></td>
+                  <td><strong>{u._count.id}</strong></td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
