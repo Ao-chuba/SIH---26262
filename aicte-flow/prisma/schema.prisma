@@ -52,6 +52,7 @@ model User {
   escalatesTo    User?          @relation("EscalationChain", fields: [escalatesToId], references: [id])
   subordinates   User[]         @relation("EscalationChain")
   assignedApps   Application[]  @relation("AssignedTo")
+  decidedApps    Application[]  @relation("DecidedBy")
   observations   Observation[]
   verifiedUndertakings Undertaking[] @relation("VerifiedBy")
   verifiedDocuments    InstDocument[] @relation("DocVerifiedBy")
@@ -73,6 +74,11 @@ model Application {
   currentStageKey String
   status          String             @default("IN_PROGRESS") // IN_PROGRESS|RETURNED|COMPLETED|DECIDED
   assignedToId    String?
+  /// Competent-authority outcome: APPROVED | APPROVED_WITH_CONDITIONS | REJECTED (null until decided)
+  decision        String?
+  decisionRemarks String?
+  decidedAt       DateTime?
+  decidedById     String?
   /// APH assistive metrics JSON: { studentIntake, facultyCount, professors, associates, assistants, labAreaSqm, requiredLabAreaSqm }
   metricsJson     String?
   submittedAt     DateTime           @default(now())
@@ -81,6 +87,7 @@ model Application {
   updatedAt       DateTime           @updatedAt
   institution     Institution        @relation(fields: [institutionId], references: [id])
   assignedTo      User?              @relation("AssignedTo", fields: [assignedToId], references: [id])
+  decidedBy       User?              @relation("DecidedBy", fields: [decidedById], references: [id])
   stages          ApplicationStage[]
   observations    Observation[]
   evcVisit        EvcVisit?
