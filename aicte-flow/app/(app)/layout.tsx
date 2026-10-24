@@ -69,15 +69,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       ? [
           {
             href: "/evc",
-            label: "EVC Management",
-            roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "EVC_COMMITTEE", "SAC_SHC_MEMBER", "ADMIN"],
+            label: "EVC Inspections",
+            roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "EVC_COMMITTEE", "ADMIN"],
           },
         ]
       : []),
     ...(!isInstitution
       ? [{ href: "/undertakings", label: "Undertakings", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] }]
-      : [{ href: "/undertakings", label: "Undertakings", roles: ["all"] }]),
-    { href: "/documents", label: "Documents", roles: ["all"] },
+      : [{ href: "/undertakings", label: "Undertakings", roles: ["INSTITUTION"] }]),
+    {
+      href: "/documents",
+      label: "Documents",
+      roles: ["INSTITUTION", "REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"],
+    },
     { href: "/escalations", label: "Escalations", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] },
     { href: "/notifications", label: "Notifications", roles: ["all"] },
     { href: "/reports", label: "Reports", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] },
@@ -94,9 +98,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ? "#14281D"
         : user.role === "BUREAU_OFFICER"
           ? "#3B4B9C"
-          : user.role === "EVC_COMMITTEE" || user.role === "SAC_SHC_MEMBER"
+          : user.role === "EVC_COMMITTEE"
             ? "#946200"
-            : "#5A6B60";
+            : user.role === "SAC_SHC_MEMBER"
+              ? "#5B21B6"
+              : "#5A6B60";
 
   const roleBadgeBg =
     user.role === "INSTITUTION"
@@ -105,9 +111,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ? "var(--highlighter-yellow)"
         : user.role === "BUREAU_OFFICER"
           ? "var(--accent-blue)"
-          : user.role === "EVC_COMMITTEE" || user.role === "SAC_SHC_MEMBER"
+          : user.role === "EVC_COMMITTEE"
             ? "#FEF3C7"
-            : "var(--accent-peach)";
+            : user.role === "SAC_SHC_MEMBER"
+              ? "#E4EAFE"
+              : "var(--accent-peach)";
 
   return (
     <div data-role={user.role}>

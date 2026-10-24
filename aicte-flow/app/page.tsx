@@ -37,10 +37,17 @@ export default async function LoginPage() {
     },
     {
       role: "EVC_COMMITTEE",
-      tag: "Inspection & Hearing",
-      label: "EVC & SAC/SHC",
-      desc: "Conduct campus inspections, file EVC reports, and review standing hearing referrals.",
+      tag: "Campus Inspection",
+      label: "EVC Committee",
+      desc: "Conduct assigned campus inspections and submit verification reports within SLA.",
       badgeColor: "#FEF3C7",
+    },
+    {
+      role: "SAC_SHC_MEMBER",
+      tag: "Appellate Hearing",
+      label: "SAC / SHC Member",
+      desc: "Review referred cases in the Standing Appellate / Hearing Committee and record recommendations.",
+      badgeColor: "#E4EAFE",
     },
     {
       role: "ADMIN",
