@@ -71,7 +71,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", roles: ["all"] },
-    { href: "/demo", label: "Jury Demo", roles: ["all"] },
+    { href: "/demo", label: "Process Guide", roles: ["ADMIN"] },
     { href: "/applications", label: "Applications", roles: ["all"] },
     ...(!isInstitution
       ? [
@@ -162,7 +162,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               className="btn btn-secondary btn-sm"
               style={{ width: "100%", justifyContent: "space-between", fontSize: 11.5 }}
             >
-              <span>Switch Role</span>
+              <span>Change account</span>
               <span style={{ fontFamily: "var(--font-sans)" }}>&rarr;</span>
             </Link>
           </div>
@@ -177,8 +177,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
 
         {isSimulating && (
-          <Link href={user.role === "ADMIN" ? "/admin" : "/dashboard"} className="clock-badge" title="Simulated clock active">
-            Sim Clock: {new Date(clock!.simulatedNow!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+          <Link
+            href={user.role === "ADMIN" ? "/admin" : "/dashboard"}
+            className="clock-badge"
+            title="System calendar override is active"
+          >
+            Calendar:{" "}
+            {new Date(clock!.simulatedNow!).toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
           </Link>
         )}
 
@@ -209,9 +218,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <strong>Statutory Notice:</strong>
           <span>
             Workflow routing and APH checks assist scrutiny; final approvals rest with the competent authority.
-          </span>
-          <span style={{ marginLeft: 8, opacity: 0.9 }}>
-            · Demo mode: cookie role switch · Email/SMS simulated in delivery log
           </span>
         </footer>
       </main>

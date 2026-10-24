@@ -40,14 +40,28 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         data: { state: "SATISFIED", closedAt: now },
       });
 
-      await tx.applicationStage.create({
-        data: {
-          applicationId: id,
-          stageKey: "RE_SCRUTINY",
-          enteredAt: now,
-          enteredById: user.id,
-        },
+      // Return already opened a RE_SCRUTINY stage row — reuse it for officer re-scrutiny
+      const openReturnStage = await tx.applicationStage.findFirst({
+        where: { applicationId: id, stageKey: "RE_SCRUTINY", exitedAt: null },
+        orderBy: { enteredAt: "desc" },
       });
+      if (openReturnStage) {
+        await tx.applicationStage.update({
+          where: { id: openReturnStage.id },
+          data: {
+            notes: `Institution replied — officer re-scrutiny\n${text.slice(0, 200)}`,
+          },
+        });
+      } else {
+        await tx.applicationStage.create({
+          data: {
+            applicationId: id,
+            stageKey: "RE_SCRUTINY",
+            enteredAt: now,
+            enteredById: user.id,
+          },
+        });
+      }
 
       await tx.application.update({
         where: { id },
