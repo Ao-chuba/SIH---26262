@@ -1,7 +1,7 @@
 ﻿# Architectural Decisions & Engineering Rationale
 
 **Project:** AICTE Flow — Approval Workflow Automation, Compliance Monitoring & Alert Management System
-**Problem Statement:** SIH 2024 PS-26262
+**Problem Statement:** SIH26262 (Smart India Hackathon 2026) — AICTE
 
 ---
 
@@ -56,7 +56,7 @@ Production external gateways (SMS, SMTP, Gov.in email relays) require credential
 
 ---
 
-## 4. Problem Statement Coverage (PS-26262)
+## 4. Problem Statement Coverage (SIH26262)
 
 | PS Requirement | Status | Implementation |
 |---|---|---|
