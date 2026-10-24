@@ -53,7 +53,7 @@ export default async function LoginPage() {
       role: "ADMIN",
       tag: "Administration",
       label: "System Admin",
-      desc: "Manage stage timelines, simulate calendar dates, and verify SHA-256 audit integrity.",
+      desc: "Manage stage timelines, system calendar, and verify SHA-256 audit integrity.",
       badgeColor: "var(--accent-peach)",
     },
   ];
@@ -133,7 +133,7 @@ export default async function LoginPage() {
               letterSpacing: "0.02em",
             }}
           >
-            SIH26262
+            Workflow Portal
           </span>
         </div>
       </header>
@@ -180,27 +180,11 @@ export default async function LoginPage() {
               color: "var(--forest-muted)",
               lineHeight: 1.55,
               maxWidth: 600,
-              margin: "0 auto 18px",
+              margin: "0 auto",
             }}
           >
             Stage routing across Scrutiny, EVC, and SAC/SHC with deadline alerts, undertaking verification,
             lease expiry tracking, and a hash-chained audit log.
-          </p>
-
-          {/* Compact honesty strip — needed for jury Q&A, not a second hero card */}
-          <p
-            style={{
-              margin: "0 auto",
-              maxWidth: 640,
-              fontSize: 12,
-              lineHeight: 1.45,
-              color: "var(--forest-muted)",
-              borderTop: "1px solid var(--border)",
-              paddingTop: 12,
-            }}
-          >
-            Evaluation build · passwordless role switch · Email/SMS logged in-app only · Production: Jan
-            Parichay SSO + NIC relays
           </p>
         </div>
 
@@ -313,10 +297,6 @@ export default async function LoginPage() {
             Sign in as a specific account
           </span>
           <AccountSelector users={userOptions} switchUserAction={switchUser} />
-          <p style={{ marginTop: 14, fontSize: 12.5, color: "var(--forest-muted)" }}>
-            After entry, open <strong style={{ color: "var(--forest)" }}>Jury Demo</strong> in the sidebar for
-            the SIH26262 golden path.
-          </p>
         </div>
       </main>
     </div>

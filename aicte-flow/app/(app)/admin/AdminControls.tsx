@@ -47,7 +47,7 @@ export function AdminControls({
   const [rulesSaved, setRulesSaved] = useState(false);
 
   async function handleClockAction(action: "reset" | "addDays" | "set", days?: number) {
-    if (!window.confirm("Change the simulated system clock? This can trigger deadline and escalation changes.")) return;
+    if (!window.confirm("Change the system calendar? This can trigger deadline and escalation changes.")) return;
     setLoading(true);
     setTickResult(null);
     setStatusMsg(null);
@@ -103,7 +103,7 @@ export function AdminControls({
   }
 
   async function handleResetDemo() {
-    if (!window.confirm("Reset and re-seed all demo data? Existing demo changes will be lost.")) return;
+    if (!window.confirm("Reset and reload sample data? Unsaved working changes will be lost.")) return;
     setResetting(true);
     setStatusMsg(null);
     try {
@@ -166,7 +166,6 @@ export function AdminControls({
         </div>
       )}
 
-      {/* Simulation Summary */}
       {tickResult && (
         <div className="card" style={{ marginBottom: 20, border: "1.5px solid var(--forest)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
@@ -261,11 +260,11 @@ export function AdminControls({
         <div className="grid-2">
           <div className="card">
             <div className="card-header">
-              <span className="card-title">System Clock</span>
+              <span className="card-title">System Calendar</span>
               <span className={`badge ${simulatedNow ? "badge-amber" : "badge-green"}`}>
                 {simulatedNow
-                  ? `Simulated: ${new Date(simulatedNow).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
-                  : "Real Time"}
+                  ? `Override: ${new Date(simulatedNow).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
+                  : "System Time"}
               </span>
             </div>
 
@@ -308,12 +307,12 @@ export function AdminControls({
             </div>
 
             <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
-              <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--red)", marginBottom: 6 }}>Reset Demo Data</div>
+              <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--red)", marginBottom: 6 }}>Reset Sample Data</div>
               <p style={{ fontSize: 12.5, color: "var(--forest-muted)", marginBottom: 10 }}>
-                Re-seeds regions, institutions, applications, undertakings, and documents.
+                Reloads regions, institutions, applications, undertakings, and documents.
               </p>
               <button disabled={resetting} onClick={handleResetDemo} className="btn btn-danger btn-sm">
-                {resetting ? "Resetting..." : "Reset Database"}
+                {resetting ? "Resetting..." : "Reset Sample Data"}
               </button>
             </div>
           </div>

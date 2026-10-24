@@ -53,8 +53,8 @@ export function AuditTable({
     if (
       !window.confirm(
         action === "simulate"
-          ? "Simulate audit-chain tampering? Verification will intentionally fail until restored."
-          : "Restore the simulated audit-chain change?"
+          ? "Run an integrity break test? Chain verification will fail until restored."
+          : "Restore the audit chain to its verified state?"
       )
     ) return;
     setTamperBusy(true);
@@ -106,7 +106,7 @@ export function AuditTable({
                 disabled={tamperBusy || tamperOn}
                 className="btn btn-danger btn-sm"
               >
-                Simulate Tamper
+                Integrity Break Test
               </button>
               <button
                 onClick={() => handleTamper("restore")}

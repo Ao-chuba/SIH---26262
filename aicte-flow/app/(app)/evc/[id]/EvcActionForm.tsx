@@ -206,8 +206,7 @@ export function EvcActionForm({
             <span className="card-title">Register Inspection Report</span>
           </div>
           <p style={{ fontSize: 12.5, color: "var(--forest-muted)", margin: "0 0 14px" }}>
-            Registers the visit outcome and advances the docket to EVC Report Review. Full statutory inspection
-            dossiers remain with the competent authority process.
+            Record the inspection outcome and advance the file to EVC Report Review.
           </p>
           <div className="form-group">
             <label className="form-label">Report Reference Number *</label>

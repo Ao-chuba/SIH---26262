@@ -8,77 +8,78 @@ import { appendAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
-const GOLDEN = [
+const STEPS = [
   {
     step: 1,
     title: "Institution deficiency reply",
     account: "inst.1.apex@demo.aicte",
     refNo: "DEMO-INTAKE-004",
-    hint: "Open the returned intake file → reply (≥10 chars) → resumes Re-Scrutiny.",
+    hint: "Open the returned intake file, submit a compliance reply, and resume Re-Scrutiny.",
     roleHint: "INSTITUTION",
-    switchTargets: [{ email: "inst.1.apex@demo.aicte", label: "Switch to Institution" }],
+    switchTargets: [{ email: "inst.1.apex@demo.aicte", label: "Open as Institution" }],
   },
   {
     step: 2,
-    title: "Regional scrutiny → EVC queue",
+    title: "Regional scrutiny to EVC queue",
     account: "ro.central.alpha@demo.aicte",
     refNo: "DEMO-NEW-INST-001",
-    hint: "Advance scrutiny (or return with APH deficiency draft). Prefer Advance to place into EVC Queue.",
+    hint: "Complete scrutiny (or return with an APH deficiency note). Advance places the file in the EVC Queue.",
     roleHint: "REGIONAL_OFFICER",
-    switchTargets: [{ email: "ro.central.alpha@demo.aicte", label: "Switch to RO" }],
+    switchTargets: [{ email: "ro.central.alpha@demo.aicte", label: "Open as Regional Officer" }],
   },
   {
     step: 3,
-    title: "EVC schedule + report",
+    title: "EVC schedule and report",
     account: "ro.central.alpha@demo.aicte → evc.member1@demo.aicte",
     refNo: "DEMO-NEW-COURSE-002",
-    hint: "RO schedules the queued visit, then EVC Member 1 submits the report reference.",
+    hint: "Regional Officer schedules the queued visit; the assigned EVC member registers the inspection report.",
     roleHint: "REGIONAL_OFFICER → EVC_COMMITTEE",
     switchTargets: [
-      { email: "ro.central.alpha@demo.aicte", label: "Switch to RO & schedule" },
-      { email: "evc.member1@demo.aicte", label: "Switch to EVC & complete" },
+      { email: "ro.central.alpha@demo.aicte", label: "Schedule as Regional Officer" },
+      { email: "evc.member1@demo.aicte", label: "Report as EVC Member" },
     ],
   },
   {
     step: 4,
-    title: "Bureau decision + undertaking",
+    title: "Bureau decision and undertaking",
     account: "bo.alpha@demo.aicte",
     refNo: "DEMO-EXTENSION-003",
-    hint: "At Decision Pending → Approve with Conditions → creates undertaking deadline.",
+    hint: "At Decision Pending, record Approve with Conditions to create a time-bound undertaking.",
     roleHint: "BUREAU_OFFICER",
-    switchTargets: [{ email: "bo.alpha@demo.aicte", label: "Switch to Bureau" }],
+    switchTargets: [{ email: "bo.alpha@demo.aicte", label: "Open as Bureau Officer" }],
   },
   {
     step: 5,
-    title: "Clock + tick → escalations",
+    title: "Deadline engine and escalations",
     account: "admin@demo.aicte",
     refNo: null,
-    hint: "Admin → advance simulated clock past due dates → Run tick → open Escalations & Notifications delivery log.",
+    hint: "In Admin, advance the system calendar past due dates, run the deadline engine, then review Escalations and Notifications.",
     roleHint: "ADMIN",
-    switchTargets: [{ email: "admin@demo.aicte", label: "Switch to Admin" }],
+    switchTargets: [{ email: "admin@demo.aicte", label: "Open as Admin" }],
     links: [
-      { href: "/admin?tab=clock", label: "Admin clock / tick" },
+      { href: "/admin?tab=clock", label: "System calendar" },
       { href: "/escalations", label: "Escalations" },
       { href: "/notifications", label: "Notifications" },
     ],
   },
   {
     step: 6,
-    title: "Audit chain verify (+ optional tamper demo)",
+    title: "Audit chain verification",
     account: "admin@demo.aicte",
     refNo: null,
-    hint: "Open Audit Trail → Verify chain. Use tamper only to show detection, then repair.",
+    hint: "Open Audit Trail and verify the hash chain. Use the integrity test only to confirm detection, then restore.",
     roleHint: "ADMIN",
-    switchTargets: [{ email: "admin@demo.aicte", label: "Switch to Admin" }],
+    switchTargets: [{ email: "admin@demo.aicte", label: "Open as Admin" }],
     links: [{ href: "/audit", label: "Audit trail" }],
   },
 ] as const;
 
-export default async function DemoPlaybookPage() {
+export default async function ProcessGuidePage() {
   const user = await getCurrentUser();
   if (!user) redirect("/");
+  if (user.role !== "ADMIN") redirect("/dashboard");
 
-  const demos = await prisma.application.findMany({
+  const samples = await prisma.application.findMany({
     where: { refNo: { startsWith: "DEMO-" } },
     select: {
       id: true,
@@ -89,12 +90,12 @@ export default async function DemoPlaybookPage() {
       evcVisit: { select: { id: true } },
     },
   });
-  const byRef = Object.fromEntries(demos.map((d) => [d.refNo, d]));
+  const byRef = Object.fromEntries(samples.map((d) => [d.refNo, d]));
 
   async function switchToAndGo(userEmail: string, href: string) {
     "use server";
     const picked = await prisma.user.findUnique({ where: { email: userEmail } });
-    if (!picked) throw new Error(`Seeded demo account not found: ${userEmail}`);
+    if (!picked) throw new Error(`Account not found: ${userEmail}`);
     const cookieStore = await cookies();
     cookieStore.set(COOKIE_NAME, picked.id, { httpOnly: true, path: "/", sameSite: "lax" });
     await appendAudit({
@@ -103,7 +104,7 @@ export default async function DemoPlaybookPage() {
       action: "LOGIN_SWITCH",
       entityType: "User",
       entityId: picked.id,
-      payload: { userId: picked.id, role: picked.role, source: "jury-demo" },
+      payload: { userId: picked.id, role: picked.role, source: "process-guide" },
     });
     redirect(href.startsWith("/") && !href.startsWith("//") ? href : "/demo");
   }
@@ -112,40 +113,24 @@ export default async function DemoPlaybookPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Jury Golden Path</h1>
+          <h1 className="page-title">Process Guide</h1>
           <p className="page-subtitle">
-            SIH26262 · 6–7 minute script · use the topbar Switch control between roles
+            End-to-end walkthrough of approval, inspection, decision, and compliance monitoring
           </p>
         </div>
         <Link href="/admin?tab=clock" className="btn btn-secondary btn-sm">
-          Admin clock &rarr;
+          System calendar &rarr;
         </Link>
-      </div>
-
-      <div
-        className="card"
-        style={{
-          marginBottom: 18,
-          background: "var(--highlighter-yellow-soft)",
-          border: "1.5px solid var(--forest)",
-        }}
-      >
-        <strong style={{ fontWeight: 800, color: "var(--forest)" }}>Demo mode reminder.</strong>
-        <span style={{ display: "block", marginTop: 6, fontSize: 13, color: "var(--forest)" }}>
-          Cookie role switch · Email/SMS appear in the Notifications delivery log only · Final decisions
-          stay human (DECISION_PENDING → Bureau).
-        </span>
       </div>
 
       <div className="card" style={{ marginBottom: 18 }}>
         <div className="card-header">
-          <span className="card-title">Seeded DEMO dockets</span>
-          <span className="badge badge-gray">{demos.length} files</span>
+          <span className="card-title">Sample applications</span>
+          <span className="badge badge-gray">{samples.length} files</span>
         </div>
-        {demos.length === 0 ? (
+        {samples.length === 0 ? (
           <p style={{ fontSize: 13, color: "var(--forest-muted)" }}>
-            No DEMO-* applications found. Admin → Reset database / run{" "}
-            <code className="font-mono">npm run seed</code>.
+            No sample applications found. Use Admin to reset sample data.
           </p>
         ) : (
           <table className="data-table">
@@ -159,7 +144,7 @@ export default async function DemoPlaybookPage() {
               </tr>
             </thead>
             <tbody>
-              {demos.map((d) => (
+              {samples.map((d) => (
                 <tr key={d.id}>
                   <td className="font-mono">{d.refNo}</td>
                   <td>{d.institution.name}</td>
@@ -182,7 +167,7 @@ export default async function DemoPlaybookPage() {
       </div>
 
       <ol style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-        {GOLDEN.map((g) => {
+        {STEPS.map((g) => {
           const app = g.refNo ? byRef[g.refNo] : null;
           return (
             <li key={g.step} className="card" style={{ margin: 0 }}>
@@ -213,7 +198,7 @@ export default async function DemoPlaybookPage() {
                   </div>
                   <p style={{ margin: "8px 0 4px", fontSize: 13.5, color: "var(--forest)" }}>{g.hint}</p>
                   <p style={{ margin: "0 0 10px", fontSize: 12.5, color: "var(--forest-muted)" }}>
-                    Switch to: <span className="font-mono">{g.account}</span>
+                    Account: <span className="font-mono">{g.account}</span>
                     {g.refNo ? (
                       <>
                         {" "}

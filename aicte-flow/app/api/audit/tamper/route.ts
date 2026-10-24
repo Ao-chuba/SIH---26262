@@ -60,14 +60,14 @@ export async function POST(request: NextRequest) {
     ]);
 
     // Do NOT appendAudit for the payload mutate itself — that would hide the break.
-    // Log a separate meta action that is a new chain tip (honest about the demo).
+    // Log a separate meta action that is a new chain tip.
     await appendAudit({
       actorId: user.id,
       actorRole: user.role,
-      action: "AUDIT_TAMPER_DEMO",
+      action: "AUDIT_INTEGRITY_TEST",
       entityType: "AuditLog",
       entityId: String(target.seq),
-      payload: { seq: target.seq, note: "Demo: payload mutated without hash update" },
+      payload: { seq: target.seq, note: "Integrity test: payload mutated without hash update" },
     });
 
     return NextResponse.json({

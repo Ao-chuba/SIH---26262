@@ -5,9 +5,9 @@ import { prisma } from "@/lib/db";
 import { appendAudit } from "@/lib/audit";
 
 export async function POST(request: NextRequest) {
-  // Demo-only passwordless persona switching; production must explicitly opt in.
+  // Account switcher is for evaluation environments; production must explicitly opt in.
   if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_AUTH !== "1") {
-    return NextResponse.json({ error: "Demo authentication is disabled" }, { status: 403 });
+    return NextResponse.json({ error: "Account switcher is disabled" }, { status: 403 });
   }
   const { userId } = await request.json();
   const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -27,6 +27,6 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json(
     { ok: true, user: { id: user.id, name: user.name, role: user.role } },
-    { headers: { "X-Demo-Auth": "1" } }
+    { headers: { "X-Account-Switch": "1" } }
   );
 }

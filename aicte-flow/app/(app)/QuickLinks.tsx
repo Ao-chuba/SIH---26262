@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 
-/** Quick-access links to seeded reference applications for walkthrough and testing. */
+/** Quick-access links to sample applications that cover each approval route. */
 export async function QuickLinks({
   userRole,
   regionId,
@@ -48,7 +48,8 @@ export async function QuickLinks({
             Reference Applications
           </div>
           <p style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 0" }}>
-            Seeded reference cases covering all approval routes. Start with <strong>DEMO-NEW-INST-001</strong> for the full statutory route.
+            Sample files covering all approval routes. Begin with{" "}
+            <strong>DEMO-NEW-INST-001</strong> for the full statutory path.
           </p>
         </div>
         {userRole === "ADMIN" && (
