@@ -106,14 +106,25 @@ export function DocumentTable({
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Attachment (.pdf) *</label>
+              <label className="form-label">Attach Renewal Document (.pdf) *</label>
               <input
-                type="text"
+                type="file"
+                accept=".pdf,application/pdf"
                 className="form-input"
-                value={renewalFileName}
-                onChange={(e) => setRenewalFileName(e.target.value)}
-                required
+                style={{ padding: "8px 12px", background: "#fff", marginBottom: 6 }}
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  const fd = new FormData();
+                  fd.append("file", f);
+                  const r = await fetch("/api/upload", { method: "POST", body: fd });
+                  const d = await r.json();
+                  if (r.ok) setRenewalFileName(d.fileName || f.name);
+                }}
               />
+              <small style={{ color: "var(--forest-muted)", fontSize: 12 }}>
+                Selected: <strong>{renewalFileName}</strong>
+              </small>
             </div>
             <div className="modal-actions">
               <button type="button" className="btn btn-secondary" onClick={() => setActiveRenewId(null)}>

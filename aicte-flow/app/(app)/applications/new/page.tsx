@@ -23,9 +23,29 @@ export default function NewApplicationPage() {
   const [faculty, setFaculty] = useState("12");
   const [academicYear, setAcademicYear] = useState("2026-2027");
   const [details, setDetails] = useState("");
-  const [fileName, setFileName] = useState("institutional_dpr_and_infrastructure.pdf");
+  const [fileName, setFileName] = useState("");
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingFile(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      setFileName(data.fileName || file.name);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to upload PDF");
+    } finally {
+      setUploadingFile(false);
+    }
+  }
 
   const routeSteps = ROUTE_PREVIEWS[appType] ?? ["Scrutiny", "Decision Pending"];
   const intakeNum = Number(intake) || 0;
@@ -60,6 +80,10 @@ export default function NewApplicationPage() {
     e.preventDefault();
     if (!gate.ok) {
       setError(gate.body);
+      return;
+    }
+    if (!fileName.trim()) {
+      setError("Please attach the DPR & Infrastructure Affidavit (.pdf) before submitting.");
       return;
     }
     setSubmitting(true);
@@ -310,13 +334,21 @@ export default function NewApplicationPage() {
             marginBottom: 24,
           }}
         >
-          <label className="form-label">DPR &amp; Infrastructure Affidavit (.pdf)</label>
+          <label className="form-label">DPR &amp; Infrastructure Affidavit (.pdf) *</label>
           <input
-            type="text"
+            type="file"
+            accept=".pdf,application/pdf"
             className="form-input"
-            value={fileName}
-            onChange={(e) => setFileName(e.target.value)}
+            onChange={handleFileSelect}
+            style={{ padding: "8px 12px", background: "#fff" }}
           />
+          <small style={{ color: fileName ? "var(--green)" : "var(--forest-muted)", display: "block", marginTop: 6, fontWeight: fileName ? 700 : 500 }}>
+            {uploadingFile
+              ? "Uploading PDF..."
+              : fileName
+                ? `Attached: ${fileName}`
+                : "Select a PDF file from your computer to attach to this application."}
+          </small>
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, borderTop: "1px solid var(--border)", paddingTop: 20 }}>
@@ -325,7 +357,7 @@ export default function NewApplicationPage() {
           </Link>
           <button
             type="submit"
-            disabled={submitting || !gate.ok}
+            disabled={submitting || uploadingFile || !gate.ok || !fileName.trim()}
             className="btn btn-primary"
             style={{ minWidth: 160 }}
           >

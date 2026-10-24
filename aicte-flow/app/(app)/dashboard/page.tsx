@@ -351,103 +351,70 @@ export default async function DashboardPage() {
     );
   }
 
-  if (user.role === "EVC_COMMITTEE" || user.role === "SAC_SHC_MEMBER") {
-    const [queued, scheduled, overdue, sacQueue] = await Promise.all([
-      prisma.evcVisit.count({ where: { status: "QUEUED" } }),
-      prisma.evcVisit.count({ where: { status: "SCHEDULED" } }),
+  if (user.role === "EVC_COMMITTEE") {
+    const [scheduledVisits, completedVisits] = await Promise.all([
       prisma.evcVisit.findMany({
-        where: { status: "SCHEDULED", scheduledFor: { lt: now } },
-        include: { application: { include: { institution: { select: { name: true } } } } },
-        take: 10,
+        where: { status: "SCHEDULED", committeeId: user.id },
+        include: { application: { include: { institution: { select: { name: true, type: true } } } } },
+        orderBy: { scheduledFor: "asc" },
       }),
-      prisma.application.findMany({
-        where: { currentStageKey: "SAC_SHC", status: "IN_PROGRESS" },
-        include: { institution: { select: { name: true } } },
+      prisma.evcVisit.findMany({
+        where: { status: "COMPLETED", committeeId: user.id },
+        include: { application: { include: { institution: { select: { name: true } } } } },
+        orderBy: { completedAt: "desc" },
         take: 10,
       }),
     ]);
+
+    const overdueCount = scheduledVisits.filter((v) => v.scheduledFor && v.scheduledFor < now).length;
 
     return (
       <div>
         <div className="page-header">
           <div>
-            <h1 className="page-title">
-              {user.role === "SAC_SHC_MEMBER" ? "SAC / SHC & EVC Dashboard" : "EVC Committee Dashboard"}
-            </h1>
-            <p className="page-subtitle">{user.name}</p>
+            <h1 className="page-title">EVC Committee Dashboard</h1>
+            <p className="page-subtitle">{user.name} · Assigned Campus Inspections</p>
           </div>
-          <Link href="/evc" className="btn btn-primary">Open EVC Queue &rarr;</Link>
+          <Link href="/evc" className="btn btn-primary">All Inspections &rarr;</Link>
         </div>
 
         <div className="kpi-grid">
-          <div className="kpi-card">
-            <div className="kpi-label">Queued for EVC</div>
-            <div className="kpi-value">{queued}</div>
-            <div className="kpi-sub">Awaiting schedule</div>
-          </div>
           <div className="kpi-card amber">
             <div className="kpi-label">Scheduled Visits</div>
-            <div className="kpi-value" style={{ color: "var(--amber)" }}>{scheduled}</div>
-            <div className="kpi-sub">Confirmed inspections</div>
+            <div className="kpi-value" style={{ color: "var(--amber)" }}>{scheduledVisits.length}</div>
+            <div className="kpi-sub">Assigned to you</div>
           </div>
           <div className="kpi-card red">
             <div className="kpi-label">Overdue Visits</div>
-            <div className="kpi-value" style={{ color: "var(--red)" }}>{overdue.length}</div>
+            <div className="kpi-value" style={{ color: "var(--red)" }}>{overdueCount}</div>
             <div className="kpi-sub">Past scheduled date</div>
           </div>
-          <div className="kpi-card purple">
-            <div className="kpi-label">SAC / SHC Queue</div>
-            <div className="kpi-value" style={{ color: "var(--purple)" }}>{sacQueue.length}</div>
-            <div className="kpi-sub">Hearing cases</div>
+          <div className="kpi-card green">
+            <div className="kpi-label">Completed Reports</div>
+            <div className="kpi-value" style={{ color: "var(--green)" }}>{completedVisits.length}</div>
+            <div className="kpi-sub">Submitted for RO review</div>
           </div>
         </div>
 
-        {sacQueue.length > 0 && (
-          <div className="card" style={{ marginBottom: 18 }}>
-            <div className="card-header">
-              <span className="card-title">SAC / SHC Hearing Queue</span>
-            </div>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Ref No</th>
-                  <th>Institution</th>
-                  <th>Type</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sacQueue.map((a) => (
-                  <tr key={a.id}>
-                    <td><Link href={`/applications/${a.id}`} className="table-link font-mono">{a.refNo}</Link></td>
-                    <td style={{ fontWeight: 600 }}>{a.institution.name}</td>
-                    <td><span className="badge badge-blue">{formatAppType(a.applicationType)}</span></td>
-                    <td><Link href={`/applications/${a.id}`} className="btn btn-primary btn-sm">Review</Link></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="card" style={{ marginBottom: 18 }}>
+          <div className="card-header">
+            <span className="card-title">Assigned Scheduled Inspections</span>
+            <Link href="/evc" className="btn btn-secondary btn-sm">Open EVC Workspace &rarr;</Link>
           </div>
-        )}
-
-        {overdue.length > 0 && (
-          <div className="card">
-            <div className="card-header">
-              <span className="card-title">Overdue EVC Visits</span>
-              <Link href="/evc" className="btn btn-secondary btn-sm">All Visits &rarr;</Link>
-            </div>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Application</th>
-                  <th>Institution</th>
-                  <th>Scheduled For</th>
-                  <th>SLA</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {overdue.map((v) => (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Application</th>
+                <th>Institution</th>
+                <th>Scheduled Date</th>
+                <th>SLA</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {scheduledVisits.map((v) => {
+                const days = v.scheduledFor ? differenceInCalendarDays(v.scheduledFor, now) : 0;
+                return (
                   <tr key={v.id}>
                     <td>
                       <Link href={`/applications/${v.applicationId}`} className="table-link font-mono">
@@ -455,21 +422,141 @@ export default async function DashboardPage() {
                       </Link>
                     </td>
                     <td style={{ fontWeight: 600 }}>{v.application.institution.name}</td>
-                    <td>{v.scheduledFor?.toLocaleDateString()}</td>
-                    <td>
-                      <span className="sla-chip red">
-                        Overdue {differenceInCalendarDays(now, v.scheduledFor!)}d
-                      </span>
-                    </td>
+                    <td>{v.scheduledFor?.toLocaleDateString() ?? "—"}</td>
+                    <td><SlaChip days={days} /></td>
                     <td>
                       <Link href={`/evc/${v.id}`} className="btn btn-primary btn-sm">Submit Report</Link>
                     </td>
+                  </tr>
+                );
+              })}
+              {scheduledVisits.length === 0 && (
+                <tr>
+                  <td colSpan={5}>
+                    <div className="empty-state">
+                      <p>No scheduled visits currently assigned to your committee.</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {completedVisits.length > 0 && (
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">Recently Submitted Reports</span>
+            </div>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Application</th>
+                  <th>Institution</th>
+                  <th>Completed On</th>
+                  <th>Report Ref</th>
+                </tr>
+              </thead>
+              <tbody>
+                {completedVisits.map((v) => (
+                  <tr key={v.id}>
+                    <td>
+                      <Link href={`/applications/${v.applicationId}`} className="table-link font-mono">
+                        {v.application.refNo}
+                      </Link>
+                    </td>
+                    <td style={{ fontWeight: 600 }}>{v.application.institution.name}</td>
+                    <td>{v.completedAt?.toLocaleDateString() ?? "—"}</td>
+                    <td><span className="badge badge-green">{v.reportRef ?? "—"}</span></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (user.role === "SAC_SHC_MEMBER") {
+    const sacQueue = await prisma.application.findMany({
+      where: { currentStageKey: "SAC_SHC", status: { in: ["IN_PROGRESS", "RETURNED"] } },
+      include: {
+        institution: { select: { name: true } },
+        deadlineItems: { where: { state: "OPEN", kind: "STAGE_TIMELINE" }, orderBy: { dueAt: "asc" }, take: 1 },
+      },
+      orderBy: { stageEnteredAt: "asc" },
+    });
+
+    const overdueHearings = sacQueue.filter((a) => {
+      const dl = a.deadlineItems[0];
+      return dl ? differenceInCalendarDays(dl.dueAt, now) < 0 : false;
+    }).length;
+
+    return (
+      <div>
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">SAC / SHC Hearing Dashboard</h1>
+            <p className="page-subtitle">{user.name} · Standing Appellate &amp; Hearing Committee</p>
+          </div>
+          <Link href="/applications" className="btn btn-primary">Hearing Docket &rarr;</Link>
+        </div>
+
+        <div className="kpi-grid">
+          <div className="kpi-card purple">
+            <div className="kpi-label">Active Hearing Cases</div>
+            <div className="kpi-value" style={{ color: "var(--purple)" }}>{sacQueue.length}</div>
+            <div className="kpi-sub">Referred to SAC / SHC</div>
+          </div>
+          <div className="kpi-card red">
+            <div className="kpi-label">Overdue Hearings</div>
+            <div className="kpi-value" style={{ color: "var(--red)" }}>{overdueHearings}</div>
+            <div className="kpi-sub">Past 10-day hearing SLA</div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">SAC / SHC Hearing Queue</span>
+            <span className="badge badge-purple">{sacQueue.length}</span>
+          </div>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Ref No</th>
+                <th>Institution</th>
+                <th>Type</th>
+                <th>SLA</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sacQueue.map((a) => {
+                const dl = a.deadlineItems[0];
+                const days = dl ? differenceInCalendarDays(dl.dueAt, now) : 999;
+                return (
+                  <tr key={a.id}>
+                    <td><Link href={`/applications/${a.id}`} className="table-link font-mono">{a.refNo}</Link></td>
+                    <td style={{ fontWeight: 600 }}>{a.institution.name}</td>
+                    <td><span className="badge badge-blue">{formatAppType(a.applicationType)}</span></td>
+                    <td>{days < 900 ? <SlaChip days={days} escalationLevel={dl?.escalationLevel ?? 0} /> : "—"}</td>
+                    <td><Link href={`/applications/${a.id}`} className="btn btn-primary btn-sm">Review &amp; Recommend</Link></td>
+                  </tr>
+                );
+              })}
+              {sacQueue.length === 0 && (
+                <tr>
+                  <td colSpan={5}>
+                    <div className="empty-state">
+                      <p>No applications currently awaiting SAC / SHC hearing.</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }
