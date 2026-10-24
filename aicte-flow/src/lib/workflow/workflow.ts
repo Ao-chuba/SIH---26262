@@ -802,7 +802,13 @@ export async function completeEvc(
 export async function submitUndertakingEvidence(
   undertakingId: string,
   actor: User,
-  data: { fileName: string; filePath?: string; note?: string }
+  data: {
+    fileName: string;
+    filePath?: string;
+    note?: string;
+    mimeType?: string;
+    sizeBytes?: number;
+  }
 ) {
   const ut = await prisma.undertaking.findUniqueOrThrow({ where: { id: undertakingId } });
   if (actor.role !== "INSTITUTION" && actor.role !== "ADMIN") {
@@ -810,6 +816,12 @@ export async function submitUndertakingEvidence(
   }
   assertInstitutionAccess(actor, ut.institutionId);
   const now = await getNow();
+  const sizeBytes = Number.isFinite(data.sizeBytes) && (data.sizeBytes as number) > 0
+    ? Math.floor(data.sizeBytes as number)
+    : null;
+  if (sizeBytes == null) {
+    throw new Error("Evidence sizeBytes from upload is required");
+  }
 
   await runTx(async (tx) => {
     await tx.evidence.create({
@@ -819,8 +831,8 @@ export async function submitUndertakingEvidence(
         undertakingId,
         fileName: data.fileName,
         filePath: data.filePath ?? `/uploads/${data.fileName}`,
-        mimeType: "application/pdf",
-        sizeBytes: 1024,
+        mimeType: data.mimeType || "application/pdf",
+        sizeBytes,
         uploadedById: actor.id,
         uploadedAt: now,
         note: data.note,
@@ -922,7 +934,14 @@ export async function verifyUndertaking(
 export async function submitDocumentRenewal(
   documentId: string,
   actor: User,
-  data: { validFrom: Date; validUntil: Date; fileName: string; filePath?: string }
+  data: {
+    validFrom: Date;
+    validUntil: Date;
+    fileName: string;
+    filePath?: string;
+    mimeType?: string;
+    sizeBytes?: number;
+  }
 ) {
   const doc = await prisma.instDocument.findUniqueOrThrow({ where: { id: documentId } });
   if (actor.role !== "INSTITUTION" && actor.role !== "ADMIN") {
@@ -930,6 +949,12 @@ export async function submitDocumentRenewal(
   }
   assertInstitutionAccess(actor, doc.institutionId);
   const now = await getNow();
+  const sizeBytes = Number.isFinite(data.sizeBytes) && (data.sizeBytes as number) > 0
+    ? Math.floor(data.sizeBytes as number)
+    : null;
+  if (sizeBytes == null) {
+    throw new Error("Evidence sizeBytes from upload is required");
+  }
 
   await runTx(async (tx) => {
     await tx.evidence.create({
@@ -939,8 +964,8 @@ export async function submitDocumentRenewal(
         documentId,
         fileName: data.fileName,
         filePath: data.filePath ?? `/uploads/${data.fileName}`,
-        mimeType: "application/pdf",
-        sizeBytes: 1024,
+        mimeType: data.mimeType || "application/pdf",
+        sizeBytes,
         uploadedById: actor.id,
         uploadedAt: now,
       },

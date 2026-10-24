@@ -33,7 +33,10 @@ export function UndertakingTable({
   const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
   const [activeVerifyId, setActiveVerifyId] = useState<string | null>(null);
   const [verifyMode, setVerifyMode] = useState<"approve" | "reject">("approve");
-  const [evidenceName, setEvidenceName] = useState("affidavit_compliance_proof.pdf");
+  const [evidenceName, setEvidenceName] = useState("");
+  const [evidencePath, setEvidencePath] = useState("");
+  const [evidenceMime, setEvidenceMime] = useState("");
+  const [evidenceSize, setEvidenceSize] = useState(0);
   const [evidenceNote, setEvidenceNote] = useState("");
   const [remarks, setRemarks] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,17 +59,34 @@ export function UndertakingTable({
   async function handleUploadEvidence(e: React.FormEvent) {
     e.preventDefault();
     if (!activeUploadId) return;
+    if (!evidencePath || !evidenceSize) {
+      setErrorMsg("Attach a PDF via the file picker before submitting.");
+      return;
+    }
     setLoading(true);
+    setErrorMsg(null);
     try {
-      await fetch(`/api/undertakings/${activeUploadId}/submit`, {
+      const res = await fetch(`/api/undertakings/${activeUploadId}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: evidenceName, note: evidenceNote }),
+        body: JSON.stringify({
+          fileName: evidenceName,
+          filePath: evidencePath,
+          mimeType: evidenceMime,
+          sizeBytes: evidenceSize,
+          note: evidenceNote,
+        }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Submit failed");
       setActiveUploadId(null);
+      setEvidenceName("");
+      setEvidencePath("");
+      setEvidenceMime("");
+      setEvidenceSize(0);
       router.refresh();
-    } catch {
-      setErrorMsg("Failed to submit evidence.");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to submit evidence.");
     } finally {
       setLoading(false);
     }
@@ -121,11 +141,19 @@ export function UndertakingTable({
                   fd.append("file", f);
                   const r = await fetch("/api/upload", { method: "POST", body: fd });
                   const d = await r.json();
-                  if (r.ok) setEvidenceName(d.fileName || f.name);
+                  if (r.ok) {
+                    setEvidenceName(d.fileName || f.name);
+                    setEvidencePath(d.filePath);
+                    setEvidenceMime(d.mimeType || f.type || "application/pdf");
+                    setEvidenceSize(Number(d.sizeBytes) || f.size);
+                  } else {
+                    setErrorMsg(d.error || "Upload failed");
+                  }
                 }}
               />
               <small style={{ color: "var(--forest-muted)", fontSize: 12 }}>
-                Selected: <strong>{evidenceName}</strong>
+                Selected: <strong>{evidenceName || "none"}</strong>
+                {evidenceSize > 0 ? ` · ${evidenceSize.toLocaleString()} bytes` : ""}
               </small>
             </div>
             <div className="form-group">
