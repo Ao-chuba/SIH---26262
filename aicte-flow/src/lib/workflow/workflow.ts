@@ -11,7 +11,7 @@ import {
   canReturnApplication,
 } from "../auth";
 import { ROUTES, STAGES, APP_TYPE_ROUTE_MAP, EVC_NEW_INSTITUTION_DAYS, RESPONSE_WINDOW_DAYS } from "../../config/rules";
-import { getConfiguredNextStage, getConfiguredRouteStages, getRouteStages } from "./routes";
+import { getConfiguredNextStage, getConfiguredRouteStages } from "./routes";
 import type { User, Application } from "@prisma/client";
 
 type RouteKey = keyof typeof ROUTES;
@@ -200,12 +200,10 @@ export async function advanceApplication(
     }
 
     if (!nextStage) {
-      // Already at last stage – should not happen, DECISION_PENDING is end
-      updatedApp = await tx.application.update({
-        where: { id: applicationId },
-        data: { status: "COMPLETED", currentStageKey: app.currentStageKey, updatedAt: now },
-      });
-      return;
+      // Never auto-complete past the human decision gate — misconfigured routes halt here
+      throw new Error(
+        `No next stage configured after ${app.currentStageKey} on route ${app.route}. Record a Bureau decision or fix ROUTES in Admin.`
+      );
     }
 
     // Assign owner for next stage
@@ -263,6 +261,7 @@ export async function advanceApplication(
         });
       }
 
+      const evcQueueDays = stageConfigs.EVC_QUEUE?.timelineDays ?? 5;
       await tx.deadlineItem.create({
         data: {
           kind: "EVC_SCHEDULING",
@@ -272,7 +271,7 @@ export async function advanceApplication(
           regionId: app.regionId,
           ownerUserId: nextOwner?.id,
           title: `${app.refNo} – EVC Scheduling deadline`,
-          dueAt: new Date(now.getTime() + 5 * 86400000),
+          dueAt: new Date(now.getTime() + evcQueueDays * 86400000),
           applicationId,
         },
       });
@@ -391,11 +390,24 @@ export async function returnApplication(
       },
     });
 
+    const returnStage = toStageKey ?? "RE_SCRUTINY";
+
+    // Open a stage row for the institution response window (dual-clock / timeline integrity)
+    await tx.applicationStage.create({
+      data: {
+        applicationId,
+        stageKey: returnStage,
+        enteredAt: now,
+        enteredById: actor.id,
+        notes: "Returned — awaiting institution response",
+      },
+    });
+
     const updated = await tx.application.update({
       where: { id: applicationId },
       data: {
         status: "RETURNED",
-        currentStageKey: toStageKey ?? "RE_SCRUTINY",
+        currentStageKey: returnStage,
         stageEnteredAt: now,
         updatedAt: now,
       },
@@ -479,7 +491,7 @@ export async function referToSacShc(
     throw new Error("Cannot refer after decision stage");
   }
 
-  const stages = getRouteStages(app.route);
+  const stages = await getConfiguredRouteStages(app.route);
   let newRoute = app.route;
   if (!stages.includes("SAC_SHC")) {
     // Keep EVC path when already past scrutiny; otherwise full hearing route
@@ -714,7 +726,11 @@ export async function scheduleEvc(
 export async function completeEvc(
   evcId: string,
   actor: User,
-  data: { reportRef: string }
+  data: {
+    reportRef: string;
+    findingsSummary?: string;
+    recommendation?: "SATISFACTORY" | "DEFICIENT" | "RECOMMEND_HEARING";
+  }
 ) {
   const evc = await prisma.evcVisit.findUniqueOrThrow({
     where: { id: evcId },
@@ -726,6 +742,15 @@ export async function completeEvc(
   if (!data.reportRef?.trim()) {
     throw new Error("A non-empty EVC report reference is required");
   }
+  const findings = (data.findingsSummary ?? "").trim();
+  if (findings.length < 20) {
+    throw new Error("Inspection findings summary must be at least 20 characters");
+  }
+  const recommendation = data.recommendation ?? "SATISFACTORY";
+  const allowedRec = ["SATISFACTORY", "DEFICIENT", "RECOMMEND_HEARING"] as const;
+  if (!allowedRec.includes(recommendation)) {
+    throw new Error("Invalid EVC recommendation");
+  }
   assertEvcCommitteeAccess(actor, evc);
 
   const now = await getNow();
@@ -733,6 +758,7 @@ export async function completeEvc(
   const ro = await prisma.user.findFirst({
     where: { role: "REGIONAL_OFFICER", regionId: evc.application.regionId },
   });
+  const reportNote = `Report ${data.reportRef.trim()} · ${recommendation}\n${findings}`;
 
   await runTx(async (tx) => {
     const scheduledStage = await tx.applicationStage.findFirst({
@@ -742,7 +768,7 @@ export async function completeEvc(
     if (scheduledStage) {
       await tx.applicationStage.update({
         where: { id: scheduledStage.id },
-        data: { exitedAt: now, outcome: "ADVANCED", notes: `Report submitted: ${data.reportRef}` },
+        data: { exitedAt: now, outcome: "ADVANCED", notes: reportNote },
       });
     }
 
@@ -782,7 +808,17 @@ export async function completeEvc(
         stageKey: "EVC_REPORT",
         enteredAt: now,
         enteredById: actor.id,
-        notes: `Report submitted: ${data.reportRef}`,
+        notes: reportNote,
+      },
+    });
+
+    await tx.observation.create({
+      data: {
+        applicationId: evc.applicationId,
+        stageKey: "EVC_SCHEDULED",
+        authorId: actor.id,
+        text: reportNote,
+        kind: "OBSERVATION",
       },
     });
 
@@ -808,7 +844,11 @@ export async function completeEvc(
     action: "EVC_COMPLETED",
     entityType: "EvcVisit",
     entityId: evcId,
-    payload: { reportRef: data.reportRef },
+    payload: {
+      reportRef: data.reportRef.trim(),
+      recommendation,
+      findingsLength: findings.length,
+    },
   });
 
   return { success: true };
@@ -916,21 +956,42 @@ export async function verifyUndertaking(
         data: { state: "SATISFIED", closedAt: now },
       });
     } else {
+      // Return to PENDING so the institution can re-submit and tick can re-OVERDUE
       await tx.undertaking.update({
         where: { id: undertakingId },
         data: {
-          status: "REJECTED",
+          status: "PENDING",
           verifiedById: actor.id,
           verifiedAt: now,
-          remarks: data.remarks,
+          remarks: data.remarks ?? "Evidence rejected — resubmit within cure window",
         },
       });
 
-      // Reopen deadline with 7-day cure window
-      await tx.deadlineItem.updateMany({
+      // Reopen / extend deadline with 7-day cure window
+      const cureDue = new Date(now.getTime() + 7 * 86400000);
+      const openUt = await tx.deadlineItem.findFirst({
         where: { undertakingId, state: "OPEN" },
-        data: { dueAt: new Date(now.getTime() + 7 * 86400000) },
       });
+      if (openUt) {
+        await tx.deadlineItem.update({
+          where: { id: openUt.id },
+          data: { dueAt: cureDue },
+        });
+      } else {
+        await tx.deadlineItem.create({
+          data: {
+            kind: "UNDERTAKING",
+            refType: "Undertaking",
+            refId: undertakingId,
+            institutionId: ut.institutionId,
+            regionId: ut.institution.regionId,
+            title: `Undertaking (cure): ${ut.title.slice(0, 40)}`,
+            dueAt: cureDue,
+            undertakingId,
+            applicationId: ut.applicationId,
+          },
+        });
+      }
     }
   });
 

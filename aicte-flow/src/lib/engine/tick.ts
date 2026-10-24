@@ -40,6 +40,22 @@ export async function tick(now?: Date): Promise<TickSummary> {
 
     const firedKeys = new Set(item.alertLogs.map((a) => a.alertKey));
 
+    // Promote documents approaching expiry (VALID → EXPIRING within 90 days)
+    if (
+      item.documentId &&
+      item.kind === "DOCUMENT_EXPIRY" &&
+      daysToDue >= 0 &&
+      daysToDue <= 90
+    ) {
+      const doc = await prisma.instDocument.findUnique({ where: { id: item.documentId } });
+      if (doc?.status === "VALID") {
+        await prisma.instDocument.update({
+          where: { id: item.documentId },
+          data: { status: "EXPIRING" },
+        });
+      }
+    }
+
     // 1. Pre-due reminders (fire only the most urgent unfired one)
     if (daysToDue >= 0) {
       const sortedReminders = [...rules.reminders].sort((a, b) => b - a);

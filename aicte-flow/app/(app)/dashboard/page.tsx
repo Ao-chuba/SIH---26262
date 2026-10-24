@@ -821,7 +821,7 @@ export default async function DashboardPage() {
           </div>
           <div style={{ display: "grid", gap: 10 }}>
             {[
-              ["Simulated Clock & Tick", "/admin", "Advance calendar date or run deadline engine"],
+              ["System Calendar & Tick", "/admin", "Advance calendar date or run deadline engine"],
               ["SLA & APH Rules", "/admin?tab=rules", "Edit stage timelines and EVC limits"],
               ["Audit Ledger", "/audit", "Verify SHA-256 chain integrity"],
               ["Reports", "/reports", "Download CSV compliance summaries"],
@@ -842,7 +842,7 @@ export default async function DashboardPage() {
           <div className="card-header">
             <span className="card-title">System Status</span>
             <span className={`badge ${isSimulating ? "badge-amber" : "badge-green"}`}>
-              {isSimulating ? "Simulated" : "Live"}
+              {isSimulating ? "Override" : "Live"}
             </span>
           </div>
           <div style={{ display: "grid", gap: 10, fontSize: 13.5 }}>
