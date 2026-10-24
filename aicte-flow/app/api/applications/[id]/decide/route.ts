@@ -11,8 +11,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!user) return NextResponse.json({ error: "Only Bureau Officers can record decisions" }, { status: 403 });
 
   const { decision, remarks, undertaking } = await request.json();
-  if (!decision || !remarks || remarks.trim().length < 5) {
-    return NextResponse.json({ error: "Decision and remarks are required" }, { status: 400 });
+  const allowed = ["APPROVED", "APPROVED_WITH_CONDITIONS", "REJECTED"];
+  if (!decision || !allowed.includes(decision) || !remarks || remarks.trim().length < 5) {
+    return NextResponse.json(
+      { error: "Valid decision (APPROVED | APPROVED_WITH_CONDITIONS | REJECTED) and remarks are required" },
+      { status: 400 }
+    );
   }
 
   const app = await prisma.application.findUnique({ where: { id } });
@@ -86,13 +90,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     return tx.application.update({
       where: { id },
-      data: { status: "DECIDED", updatedAt: now },
+      data: {
+        status: "DECIDED",
+        decision,
+        decisionRemarks: remarks.trim(),
+        decidedAt: now,
+        decidedById: user.id,
+        updatedAt: now,
+      },
     });
   });
 
   await appendAudit({
     actorId: user.id, actorRole: user.role, action: "DECISION_RECORDED",
-    entityType: "Application", entityId: id, payload: { decision, remarks },
+    entityType: "Application", entityId: id,
+    payload: { decision, remarks, decidedAt: now.toISOString() },
   });
 
   if (createdUndertakingId) {
