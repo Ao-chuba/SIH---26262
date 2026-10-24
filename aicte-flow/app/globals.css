@@ -198,37 +198,22 @@ code, pre, .font-mono, .sla-chip, .badge, .mono-label {
   text-align: left;
 }
 
-.nav-item:hover {
+.nav-item:hover,
+.nav-item.active {
   background: var(--sidebar-hover);
   color: var(--forest);
 }
 
 .nav-item.active {
-  background: var(--forest);
-  color: var(--sidebar-active-text);
-  box-shadow: 0 2px 8px rgba(20, 40, 29, 0.14);
-}
-
-.nav-item.active .nav-ascii {
-  color: var(--highlighter-yellow);
-  opacity: 1;
-}
-
-.nav-item .nav-ascii {
-  font-family: var(--font-mono);
-  font-size: 11px;
   font-weight: 700;
-  opacity: 0.75;
-  min-width: 28px;
 }
 
 .nav-item .badge {
   margin-left: auto;
-  background: var(--highlighter-yellow);
-  color: var(--forest);
-  border: 1px solid var(--forest);
+  background: var(--forest);
+  color: #ffffff;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 1px 7px;
   border-radius: 9999px;
 }

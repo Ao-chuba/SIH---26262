@@ -69,7 +69,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       ? [
           {
             href: "/evc",
-            label: "EVC Inspections",
+            label: "EVC Management",
             roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "EVC_COMMITTEE", "SAC_SHC_MEMBER", "ADMIN"],
           },
         ]
@@ -77,12 +77,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ...(!isInstitution
       ? [{ href: "/undertakings", label: "Undertakings", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] }]
       : [{ href: "/undertakings", label: "Undertakings", roles: ["all"] }]),
-    { href: "/documents", label: "Documents & Leases", roles: ["all"] },
+    { href: "/documents", label: "Documents", roles: ["all"] },
     { href: "/escalations", label: "Escalations", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] },
     { href: "/notifications", label: "Notifications", roles: ["all"] },
     { href: "/reports", label: "Reports", roles: ["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"] },
-    { href: "/audit", label: "Audit Ledger", roles: ["BUREAU_OFFICER", "ADMIN", "REGIONAL_OFFICER"] },
-    { href: "/admin", label: "Administration", roles: ["ADMIN"] },
+    { href: "/audit", label: "Audit Trail", roles: ["BUREAU_OFFICER", "ADMIN", "REGIONAL_OFFICER"] },
+    { href: "/admin", label: "Admin", roles: ["ADMIN"] },
   ]
     .filter((item) => item.roles.includes("all") || item.roles.includes(user.role))
     .map(({ href, label }) => ({ href, label }));
@@ -115,11 +115,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <Link href="/dashboard" style={{ textDecoration: "none" }}>
-            <h1>
-              AICTE Flow<span className="logo-dot" />
-            </h1>
-            <p>Approval &amp; Compliance Portal</p>
+          <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+            <img
+              src="/logo.png"
+              alt="AICTE Logo"
+              style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 8, flexShrink: 0 }}
+            />
+            <div>
+              <h1>
+                AICTE Flow<span className="logo-dot" />
+              </h1>
+              <p>Approval &amp; Compliance Portal</p>
+            </div>
           </Link>
         </div>
 
