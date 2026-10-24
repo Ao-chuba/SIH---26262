@@ -2,6 +2,14 @@ import { prisma, runTx } from "../db";
 import { appendAudit } from "../audit";
 import { getNow } from "../clock";
 import { notify } from "../notify";
+import {
+  assertEvcCommitteeAccess,
+  assertInstitutionAccess,
+  assertRegionAccess,
+  AuthError,
+  canAdvanceStage,
+  canReturnApplication,
+} from "../auth";
 import { ROUTES, STAGES, APP_TYPE_ROUTE_MAP, EVC_NEW_INSTITUTION_DAYS, RESPONSE_WINDOW_DAYS } from "../../config/rules";
 import type { User, Application } from "@prisma/client";
 
@@ -145,18 +153,20 @@ export async function advanceApplication(
     include: { evcVisit: true },
   });
 
-  // Guard: check actor role
-  const stageOwnerRole = STAGES[app.currentStageKey]?.ownerRole;
-  const canActOnSac =
-    app.currentStageKey === "SAC_SHC" &&
-    (actor.role === "SAC_SHC_MEMBER" || actor.role === "EVC_COMMITTEE");
-  if (
-    actor.role !== "ADMIN" &&
-    actor.role !== "BUREAU_OFFICER" &&
-    actor.role !== stageOwnerRole &&
-    !canActOnSac
-  ) {
-    throw new Error(`Role ${actor.role} cannot advance stage ${app.currentStageKey}`);
+  if (app.currentStageKey === "EVC_SCHEDULED") {
+    throw new Error("Use Submit EVC Report to complete a scheduled visit — cannot advance from this stage");
+  }
+  if (app.currentStageKey === "DECISION_PENDING") {
+    throw new Error("Use Record Decision for the decision stage — cannot advance");
+  }
+  if (!canAdvanceStage(actor, app.currentStageKey)) {
+    throw new AuthError(`Role ${actor.role} cannot advance stage ${app.currentStageKey}`, 403);
+  }
+  if (actor.role === "REGIONAL_OFFICER") {
+    assertRegionAccess(actor, app.regionId);
+  }
+  if (actor.role === "SAC_SHC_MEMBER" && app.currentStageKey !== "SAC_SHC") {
+    throw new AuthError("SAC/SHC members may only advance hearing-stage files", 403);
   }
 
   // Guard: illegal transition
@@ -330,6 +340,12 @@ export async function returnApplication(
   }
 
   const app = await prisma.application.findUniqueOrThrow({ where: { id: applicationId } });
+  if (!canReturnApplication(actor, app.currentStageKey)) {
+    throw new AuthError(`Role ${actor.role} cannot return applications at ${app.currentStageKey}`, 403);
+  }
+  if (actor.role === "REGIONAL_OFFICER") {
+    assertRegionAccess(actor, app.regionId);
+  }
   const now = await getNow();
 
   const currentStageRecord = await prisma.applicationStage.findFirst({
@@ -446,10 +462,13 @@ export async function referToSacShc(
     actor.role !== "REGIONAL_OFFICER" &&
     actor.role !== "BUREAU_OFFICER"
   ) {
-    throw new Error(`Role ${actor.role} cannot refer to SAC/SHC`);
+    throw new AuthError(`Role ${actor.role} cannot refer to SAC/SHC`, 403);
   }
 
   const app = await prisma.application.findUniqueOrThrow({ where: { id: applicationId } });
+  if (actor.role === "REGIONAL_OFFICER") {
+    assertRegionAccess(actor, app.regionId);
+  }
 
   if (app.status !== "IN_PROGRESS" && app.status !== "RETURNED") {
     throw new Error(`Cannot refer application in status ${app.status}`);
@@ -583,6 +602,12 @@ export async function scheduleEvc(
     where: { id: evcId },
     include: { application: true },
   });
+  if (actor.role !== "ADMIN" && actor.role !== "REGIONAL_OFFICER") {
+    throw new AuthError("Only regional officers can schedule EVC visits", 403);
+  }
+  if (actor.role === "REGIONAL_OFFICER") {
+    assertRegionAccess(actor, evc.application.regionId);
+  }
 
   const now = await getNow();
   const isNew = data.isNewInstitution ?? evc.isNewInstitution;
@@ -683,6 +708,7 @@ export async function completeEvc(
     where: { id: evcId },
     include: { application: true },
   });
+  assertEvcCommitteeAccess(actor, evc);
 
   const now = await getNow();
   const stageConfigs = await getConfiguredStages();
@@ -779,6 +805,10 @@ export async function submitUndertakingEvidence(
   data: { fileName: string; filePath?: string; note?: string }
 ) {
   const ut = await prisma.undertaking.findUniqueOrThrow({ where: { id: undertakingId } });
+  if (actor.role !== "INSTITUTION" && actor.role !== "ADMIN") {
+    throw new AuthError("Only the institution can submit undertaking evidence", 403);
+  }
+  assertInstitutionAccess(actor, ut.institutionId);
   const now = await getNow();
 
   await runTx(async (tx) => {
@@ -823,7 +853,16 @@ export async function verifyUndertaking(
   actor: User,
   data: { verified: boolean; remarks?: string }
 ) {
-  const ut = await prisma.undertaking.findUniqueOrThrow({ where: { id: undertakingId } });
+  const ut = await prisma.undertaking.findUniqueOrThrow({
+    where: { id: undertakingId },
+    include: { institution: { select: { regionId: true } } },
+  });
+  if (!["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"].includes(actor.role)) {
+    throw new AuthError("Only officers can verify undertakings", 403);
+  }
+  if (actor.role === "REGIONAL_OFFICER") {
+    assertRegionAccess(actor, ut.institution.regionId);
+  }
   const now = await getNow();
 
   await runTx(async (tx) => {
@@ -885,6 +924,11 @@ export async function submitDocumentRenewal(
   actor: User,
   data: { validFrom: Date; validUntil: Date; fileName: string; filePath?: string }
 ) {
+  const doc = await prisma.instDocument.findUniqueOrThrow({ where: { id: documentId } });
+  if (actor.role !== "INSTITUTION" && actor.role !== "ADMIN") {
+    throw new AuthError("Only the institution can submit document renewals", 403);
+  }
+  assertInstitutionAccess(actor, doc.institutionId);
   const now = await getNow();
 
   await runTx(async (tx) => {
@@ -932,7 +976,16 @@ export async function verifyDocument(
   actor: User,
   data: { verified: boolean; remarks?: string }
 ) {
-  const doc = await prisma.instDocument.findUniqueOrThrow({ where: { id: documentId } });
+  const doc = await prisma.instDocument.findUniqueOrThrow({
+    where: { id: documentId },
+    include: { institution: { select: { regionId: true } } },
+  });
+  if (!["REGIONAL_OFFICER", "BUREAU_OFFICER", "ADMIN"].includes(actor.role)) {
+    throw new AuthError("Only officers can verify document renewals", 403);
+  }
+  if (actor.role === "REGIONAL_OFFICER") {
+    assertRegionAccess(actor, doc.institution.regionId);
+  }
   const now = await getNow();
 
   await runTx(async (tx) => {

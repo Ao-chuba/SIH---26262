@@ -14,10 +14,25 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const where: Record<string, unknown> = {};
   if (user.role === "INSTITUTION") where.institutionId = user.institutionId;
-  if (user.role === "REGIONAL_OFFICER") where.regionId = user.regionId;
-  if (searchParams.get("regionId")) where.regionId = searchParams.get("regionId");
+  if (user.role === "REGIONAL_OFFICER") {
+    where.regionId = user.regionId; // never trust client regionId for RO
+  } else if (
+    (user.role === "BUREAU_OFFICER" || user.role === "ADMIN") &&
+    searchParams.get("regionId")
+  ) {
+    where.regionId = searchParams.get("regionId");
+  }
+  if (user.role === "EVC_COMMITTEE") {
+    where.OR = [
+      { evcVisit: { committeeId: user.id } },
+      { currentStageKey: { in: ["EVC_QUEUE", "EVC_SCHEDULED", "EVC_REPORT"] }, evcVisit: { committeeId: null } },
+    ];
+  }
+  if (user.role === "SAC_SHC_MEMBER") where.currentStageKey = "SAC_SHC";
   if (searchParams.get("status")) where.status = searchParams.get("status");
-  if (searchParams.get("stage")) where.currentStageKey = searchParams.get("stage");
+  if (searchParams.get("stage") && user.role !== "SAC_SHC_MEMBER") {
+    where.currentStageKey = searchParams.get("stage");
+  }
 
   const apps = await prisma.application.findMany({
     where,

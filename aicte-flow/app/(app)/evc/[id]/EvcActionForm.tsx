@@ -7,6 +7,7 @@ import { formatAppType, formatStatus } from "@/lib/format";
 
 export function EvcActionForm({
   evc,
+  userRole,
   committeeMembers,
 }: {
   evc: any;
@@ -14,6 +15,8 @@ export function EvcActionForm({
   committeeMembers: { id: string; name: string; email: string }[];
 }) {
   const router = useRouter();
+  const canSchedule = userRole === "REGIONAL_OFFICER" || userRole === "ADMIN";
+  const canComplete = userRole === "ADMIN" || userRole === "EVC_COMMITTEE";
   const [scheduledFor, setScheduledFor] = useState(
     evc.scheduledFor
       ? new Date(evc.scheduledFor).toISOString().slice(0, 10)
@@ -132,7 +135,7 @@ export function EvcActionForm({
       </div>
 
       {/* Schedule Form */}
-      {evc.status === "QUEUED" && (
+      {evc.status === "QUEUED" && canSchedule && (
         <form onSubmit={handleSchedule} className="card">
           <div className="card-header">
             <span className="card-title">Schedule Inspection</span>
@@ -180,8 +183,16 @@ export function EvcActionForm({
         </form>
       )}
 
+      {evc.status === "QUEUED" && !canSchedule && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <p style={{ margin: 0, fontSize: 13.5, color: "var(--forest-muted)" }}>
+            Only the Regional Officer can schedule this visit. EVC members submit reports after scheduling.
+          </p>
+        </div>
+      )}
+
       {/* Complete Visit Form */}
-      {evc.status === "SCHEDULED" && (
+      {evc.status === "SCHEDULED" && canComplete && (
         <form onSubmit={handleComplete} className="card">
           <div className="card-header">
             <span className="card-title">Submit Inspection Report</span>
@@ -201,6 +212,18 @@ export function EvcActionForm({
             {loading ? "Submitting..." : "Submit Report & Advance to Review"}
           </button>
         </form>
+      )}
+
+      {evc.status === "SCHEDULED" && !canComplete && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <p style={{ margin: 0, fontSize: 13.5, color: "var(--forest-muted)" }}>
+            Scheduled for{" "}
+            <strong style={{ color: "var(--forest)" }}>
+              {evc.scheduledFor ? new Date(evc.scheduledFor).toLocaleDateString() : "inspection"}
+            </strong>
+            {" "}— awaiting inspection report submission from the assigned EVC Committee member.
+          </p>
+        </div>
       )}
 
       {/* Completed State */}

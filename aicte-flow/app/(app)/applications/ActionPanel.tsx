@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type Application = {
   id: string;
@@ -15,14 +16,26 @@ type User = {
   id: string;
 };
 
+const STAGE_CUSTODIAN: Record<string, string> = {
+  SCRUTINY: "Regional Officer (Initial Scrutiny)",
+  RE_SCRUTINY: "Regional Officer (Re-Scrutiny)",
+  EVC_QUEUE: "Regional Officer (EVC Scheduling)",
+  EVC_SCHEDULED: "Assigned EVC Committee (Campus Inspection)",
+  EVC_REPORT: "Regional Officer (EVC Report Review)",
+  SAC_SHC: "Standing Appellate / Hearing Committee (SAC / SHC)",
+  DECISION_PENDING: "Central Bureau (Competent Authority Decision)",
+};
+
 export function ActionPanel({
   app,
   user,
   aphDeficiencyDraft = "",
+  evcVisitId = null,
 }: {
   app: Application;
   user: User;
   aphDeficiencyDraft?: string;
+  evcVisitId?: string | null;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -44,15 +57,29 @@ export function ActionPanel({
   const stageOwnerRoles: Record<string, string[]> = {
     SCRUTINY: ["REGIONAL_OFFICER", "ADMIN"],
     RE_SCRUTINY: ["REGIONAL_OFFICER", "ADMIN"],
-    EVC_QUEUE: ["REGIONAL_OFFICER", "ADMIN"],
-    EVC_SCHEDULED: ["EVC_COMMITTEE", "ADMIN"],
+    EVC_QUEUE: [], // RO schedules via /evc/[id]
+    EVC_SCHEDULED: [], // EVC submits report on /evc/[id]
     EVC_REPORT: ["REGIONAL_OFFICER", "ADMIN"],
-    SAC_SHC: ["SAC_SHC_MEMBER", "EVC_COMMITTEE", "BUREAU_OFFICER", "ADMIN"],
-    DECISION_PENDING: ["BUREAU_OFFICER", "ADMIN"],
+    SAC_SHC: ["SAC_SHC_MEMBER", "ADMIN"],
+    DECISION_PENDING: [], // Bureau uses Record Decision
   };
 
   const canAdvance = stageOwnerRoles[app.currentStageKey]?.includes(user.role);
-  const canReturn = canAdvance && app.currentStageKey !== "DECISION_PENDING";
+  const canReturn =
+    canAdvance &&
+    app.currentStageKey !== "DECISION_PENDING" &&
+    app.currentStageKey !== "EVC_QUEUE" &&
+    app.currentStageKey !== "EVC_SCHEDULED";
+  const canScheduleEvcHere =
+    (user.role === "REGIONAL_OFFICER" || user.role === "ADMIN") &&
+    app.currentStageKey === "EVC_QUEUE" &&
+    app.status === "IN_PROGRESS" &&
+    !!evcVisitId;
+  const canSubmitEvcHere =
+    (user.role === "EVC_COMMITTEE" || user.role === "ADMIN") &&
+    app.currentStageKey === "EVC_SCHEDULED" &&
+    app.status === "IN_PROGRESS" &&
+    !!evcVisitId;
   const canDecide =
     (user.role === "BUREAU_OFFICER" || user.role === "ADMIN") &&
     app.currentStageKey === "DECISION_PENDING";
@@ -60,6 +87,13 @@ export function ActionPanel({
     (user.role === "REGIONAL_OFFICER" || user.role === "BUREAU_OFFICER" || user.role === "ADMIN") &&
     ["SCRUTINY", "RE_SCRUTINY", "EVC_QUEUE", "EVC_REPORT"].includes(app.currentStageKey) &&
     (app.status === "IN_PROGRESS" || app.status === "RETURNED");
+  const canObserve = [
+    "REGIONAL_OFFICER",
+    "BUREAU_OFFICER",
+    "EVC_COMMITTEE",
+    "SAC_SHC_MEMBER",
+    "ADMIN",
+  ].includes(user.role);
   const isInstitution = user.role === "INSTITUTION";
 
   async function doAdvance() {
@@ -240,11 +274,21 @@ export function ActionPanel({
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         {canAdvance && app.status === "IN_PROGRESS" && app.currentStageKey !== "DECISION_PENDING" && (
           <button className="btn btn-primary" onClick={doAdvance} disabled={loading}>
             Advance Stage &rarr;
           </button>
+        )}
+        {canScheduleEvcHere && (
+          <Link href={`/evc/${evcVisitId}`} className="btn btn-primary">
+            Schedule EVC Inspection &rarr;
+          </Link>
+        )}
+        {canSubmitEvcHere && (
+          <Link href={`/evc/${evcVisitId}`} className="btn btn-primary">
+            Submit EVC Report &rarr;
+          </Link>
         )}
         {canReturn && (
           <button className="btn btn-secondary" onClick={() => setShowReturn(true)} disabled={loading}>
@@ -261,14 +305,60 @@ export function ActionPanel({
             Record Decision
           </button>
         )}
-        <button className="btn btn-secondary" onClick={() => setShowObserve(true)} disabled={loading}>
-          Add Observation
-        </button>
-        {aphDeficiencyDraft && (user.role === "REGIONAL_OFFICER" || user.role === "ADMIN") && (
+        {canObserve && (
+          <button className="btn btn-secondary" onClick={() => setShowObserve(true)} disabled={loading}>
+            Add Observation
+          </button>
+        )}
+        {aphDeficiencyDraft && canObserve && (user.role === "REGIONAL_OFFICER" || user.role === "ADMIN") && (
           <button className="btn btn-secondary" onClick={openObserveWithAph} disabled={loading}>
             Prefill APH Deficiencies
           </button>
         )}
+
+        {app.status === "DECIDED" || app.status === "COMPLETED" ? (
+          <div style={{ width: "100%", fontSize: 13, color: "var(--green)", fontWeight: 700, marginTop: 4 }}>
+            Final decision recorded — workflow complete.
+          </div>
+        ) : isInstitution && app.status !== "RETURNED" ? (
+          <div
+            style={{
+              width: "100%",
+              padding: "10px 14px",
+              borderRadius: 10,
+              background: "var(--bg)",
+              border: "1px solid var(--border)",
+              fontSize: 13,
+              color: "var(--forest-muted)",
+            }}
+          >
+            Currently under review by{" "}
+            <strong style={{ color: "var(--forest)" }}>
+              {STAGE_CUSTODIAN[app.currentStageKey] ?? app.currentStageKey}
+            </strong>
+            . You will be notified if any deficiency response is required.
+          </div>
+        ) : !isInstitution && !canAdvance && !canScheduleEvcHere && !canSubmitEvcHere && !canDecide ? (
+          <div
+            style={{
+              width: "100%",
+              padding: "10px 14px",
+              borderRadius: 10,
+              background: "var(--bg)",
+              border: "1px solid var(--border)",
+              fontSize: 12.5,
+              color: "var(--forest-muted)",
+              marginTop: 4,
+            }}
+          >
+            Stage custodian:{" "}
+            <strong style={{ color: "var(--forest)" }}>
+              {STAGE_CUSTODIAN[app.currentStageKey] ?? app.currentStageKey}
+            </strong>
+            . Stage transition is restricted to the owning authority.
+          </div>
+        ) : null}
+
         {isInstitution && app.status === "RETURNED" && (
           <form
             onSubmit={(e) => {

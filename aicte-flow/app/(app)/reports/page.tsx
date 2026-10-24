@@ -71,13 +71,17 @@ export default async function ReportsPage() {
       desc: "All overdue deadline items with escalation levels.",
       exportUrl: "/api/reports/overdue?format=csv",
     },
-    {
-      id: "region-performance",
-      title: "Regional SLA Performance",
-      num: "06",
-      desc: "Average stage duration and SLA compliance by region.",
-      exportUrl: "/api/reports/region-performance?format=csv",
-    },
+    ...(user.role === "REGIONAL_OFFICER"
+      ? []
+      : [
+          {
+            id: "region-performance",
+            title: "Regional SLA Performance",
+            num: "06",
+            desc: "Average stage duration and SLA compliance by region.",
+            exportUrl: "/api/reports/region-performance?format=csv",
+          },
+        ]),
   ];
 
   return (
