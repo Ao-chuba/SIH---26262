@@ -139,6 +139,9 @@ export function assertEvcCommitteeAccess(
 ): void {
   if (user.role === "ADMIN") return;
   if (user.role === "EVC_COMMITTEE") {
+    if (!evc.committeeId) {
+      throw new AuthError("This visit must be assigned before an EVC member can complete it", 403);
+    }
     if (evc.committeeId && evc.committeeId !== user.id) {
       throw new AuthError("This visit is assigned to another EVC member", 403);
     }

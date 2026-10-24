@@ -107,7 +107,7 @@ npm start
 
 ## Role Accounts
 
-Switch between roles using the user switcher dropdown in the top navigation bar, or select from the role cards on the login page.
+Switch between roles using the user switcher dropdown in the top navigation bar, or select from the role cards on the login page. This passwordless cookie switch is demo-only and is disabled in production unless `ALLOW_DEMO_AUTH=1`.
 
 | Role | Email | Scope |
 |---|---|---|
@@ -115,7 +115,7 @@ Switch between roles using the user switcher dropdown in the top navigation bar,
 | Bureau Officer | bo.alpha@demo.aicte | All-region oversight, final decisions, L2/L3 escalation management |
 | Regional Officer (Central) | ro.central.alpha@demo.aicte | Central region scrutiny, EVC scheduling, undertaking verification |
 | Regional Officer (Southern) | ro.southern.alpha@demo.aicte | Southern region applications and document renewals |
-| EVC Committee | evc.member1@demo.aicte | Inspection queue, visit scheduling, report submission |
+| EVC Committee | evc.member1@demo.aicte | Assigned inspections and report submission |
 | SAC/SHC Member | sac.member@demo.aicte | Standing Advisory/Hearing Committee stage evaluations |
 | Institution | inst.1.apex@demo.aicte | Application submission, deficiency responses, undertaking uploads |
 

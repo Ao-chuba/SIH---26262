@@ -228,13 +228,20 @@ async function main() {
   adminId = admin.id;
 
   // Institution users (~10)
+  const fixedInstitutionEmails = [
+    "inst.1.apex@demo.aicte",
+    "inst.2.demo@demo.aicte",
+    "inst.3.demo@demo.aicte",
+    "inst.4.demo@demo.aicte",
+    "inst.5.demo@demo.aicte",
+  ];
   for (let i = 0; i < Math.min(10, institutions.length); i++) {
     const inst = institutions[i];
     const slug = inst.name.split(" ").slice(-2).join("").toLowerCase().replace(/[^a-z]/g, "");
     const user = await prisma.user.create({
       data: {
         name: `Institution User – ${inst.name}`,
-        email: `inst.${i + 1}.${slug}@demo.aicte`,
+        email: fixedInstitutionEmails[i] ?? `inst.${i + 1}.${slug}@demo.aicte`,
         role: "INSTITUTION",
         institutionId: inst.id,
         regionId: inst.regionId,
@@ -417,21 +424,29 @@ async function main() {
   });
   applications.push(demoApp1.id);
 
-  // DEMO-NEW-COURSE-002: SCRUTINY_EVC, at EVC_SCHEDULED
+  // DEMO-NEW-COURSE-002: queued so the Regional Officer can schedule it
   const demoApp2 = await createApp({
     refNo: "DEMO-NEW-COURSE-002",
     institutionId: institutions[1].id,
     regionId: institutions[1].regionId,
     applicationType: "NEW_COURSE",
     route: "SCRUTINY_EVC",
-    currentStageKey: "EVC_SCHEDULED",
+    currentStageKey: "EVC_QUEUE",
     status: "IN_PROGRESS",
     submittedDaysAgo: 25,
     stageEnteredDaysAgo: 3,
-    assignedToId: evcMembers[0],
+    assignedToId: allRegionalOfficers.find((r) => r.regionId === institutions[1].regionId)?.id,
     isDemo: true,
   });
   applications.push(demoApp2.id);
+  await prisma.evcVisit.create({
+    data: {
+      applicationId: demoApp2.id,
+      status: "QUEUED",
+      committeeId: null,
+      isNewInstitution: false,
+    },
+  });
 
   // DEMO-EXTENSION-003: ONLY_SCRUTINY, DECISION_PENDING
   const demoApp3 = await createApp({
@@ -452,8 +467,8 @@ async function main() {
   // DEMO-INTAKE-004: SCRUTINY_EVC, RETURNED
   const demoApp4 = await createApp({
     refNo: "DEMO-INTAKE-004",
-    institutionId: institutions[3].id,
-    regionId: institutions[3].regionId,
+    institutionId: institutions[0].id,
+    regionId: institutions[0].regionId,
     applicationType: "INTAKE_INCREASE",
     route: "SCRUTINY_EVC",
     currentStageKey: "SCRUTINY",
@@ -592,7 +607,7 @@ async function main() {
         status: "SCHEDULED",
         queuedAt: daysAgo(randInt(5, 10)),
         scheduledFor,
-        committeeId: pick(evcMembers),
+        committeeId: app.refNo.startsWith("DEMO-") ? evcMembers[0] : pick(evcMembers),
         isNewInstitution: isNew,
       },
       update: {},
@@ -605,7 +620,7 @@ async function main() {
         refId: app.id,
         institutionId: app.institutionId,
         regionId: app.regionId,
-        ownerUserId: pick(evcMembers),
+        ownerUserId: app.refNo.startsWith("DEMO-") ? evcMembers[0] : pick(evcMembers),
         title: `${app.refNo} – EVC Completion deadline`,
         dueAt: scheduledFor,
         state: "OPEN",
@@ -696,7 +711,7 @@ async function main() {
   // Documents (~50)
   console.log("📄 Creating documents...");
   const docTypes = ["LEASE", "NOC", "LAND_USE", "FIRE_SAFETY", "BUILDING_STABILITY", "OTHER"];
-  const docStatuses = ["VALID", "EXPIRING", "EXPIRED", "RENEWAL_SUBMITTED", "RENEWAL_VERIFIED"];
+  const docStatuses = ["VALID", "EXPIRING", "EXPIRED", "RENEWAL_SUBMITTED"];
   for (let i = 0; i < 50; i++) {
     // Guarantee the first 10 institutions (which have login accounts) each get 2 documents (1 expiring/expired, 1 valid)
     const inst = i < 20 ? institutions[i % 10] : pick(institutions);
@@ -710,7 +725,7 @@ async function main() {
       if (r < 0.55) return "EXPIRING";
       if (r < 0.65) return "EXPIRED";
       if (r < 0.73) return "RENEWAL_SUBMITTED";
-      return "RENEWAL_VERIFIED";
+      return "VALID";
     })();
 
     const validFrom = daysAgo(randInt(180, 1000));
@@ -733,8 +748,8 @@ async function main() {
         validFrom,
         validUntil,
         status,
-        verifiedById: ["RENEWAL_VERIFIED"].includes(status) ? ro?.id : null,
-        verifiedAt: ["RENEWAL_VERIFIED"].includes(status) ? daysAgo(randInt(1, 15)) : null,
+        verifiedById: null,
+        verifiedAt: null,
       },
     });
 
@@ -836,7 +851,7 @@ async function main() {
   console.log("  ro.southern.alpha@demo.aicte      → REGIONAL_OFFICER (Southern)");
   console.log("  evc.member1@demo.aicte            → EVC_COMMITTEE");
   console.log("  sac.member@demo.aicte             → SAC_SHC_MEMBER");
-  console.log("  inst.apexinstituteoftechnology... → INSTITUTION");
+  console.log("  inst.1.apex@demo.aicte             → INSTITUTION");
   console.log("\n🎯 Demo applications: DEMO-NEW-INST-001, DEMO-NEW-COURSE-002, DEMO-EXTENSION-003, DEMO-INTAKE-004, DEMO-EVC-SAC-005");
 }
 

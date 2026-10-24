@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { differenceInCalendarDays } from "date-fns";
 import { formatDocType } from "@/lib/format";
+import Link from "next/link";
 
 type DocItem = {
   id: string;
@@ -13,6 +14,8 @@ type DocItem = {
   validFrom: string;
   validUntil: string;
   status: string;
+  remarks: string | null;
+  evidence: { id: string; fileName: string } | null;
 };
 
 export function DocumentTable({
@@ -87,14 +90,18 @@ export function DocumentTable({
     setLoading(true);
     setErrorMsg(null);
     try {
-      await fetch(`/api/documents/${docId}/verify`, {
+      const remarks = window.prompt(verified ? "Verification remarks" : "Rejection remarks")?.trim();
+      if (remarks == null) return;
+      const res = await fetch(`/api/documents/${docId}/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ verified }),
+        body: JSON.stringify({ verified, remarks }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Verification failed");
       router.refresh();
-    } catch {
-      setErrorMsg("Failed to verify document renewal.");
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : "Failed to verify document renewal.");
     } finally {
       setLoading(false);
     }
@@ -194,6 +201,7 @@ export function DocumentTable({
                 <th>Valid Until</th>
                 <th>Validity</th>
                 <th>Status</th>
+                <th>Evidence / Remarks</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -234,6 +242,14 @@ export function DocumentTable({
                       ) : (
                         <span className="badge badge-green">Valid</span>
                       )}
+                    </td>
+                    <td style={{ minWidth: 180, fontSize: 12 }}>
+                      {doc.evidence ? (
+                        <Link href={`/api/evidence/${doc.evidence.id}`} className="table-link">
+                          {doc.evidence.fileName}
+                        </Link>
+                      ) : "—"}
+                      {doc.remarks && <div style={{ marginTop: 4, color: "var(--forest-muted)" }}>{doc.remarks}</div>}
                     </td>
                     <td>
                       <div style={{ display: "flex", gap: 6 }}>
@@ -276,7 +292,7 @@ export function DocumentTable({
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={8}>
                     <div className="empty-state"><p>No documents found.</p></div>
                   </td>
                 </tr>
