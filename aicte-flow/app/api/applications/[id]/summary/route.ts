@@ -129,7 +129,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   <div class="sheet">
     <div class="header-row">
       <div>
-        <span class="pill">AICTE FLOW • SIH-26262 DOCKET</span>
+        <span class="pill">AICTE FLOW • CASE DOCKET</span>
         <h1 style="margin-top: 10px;">Case Summary: <span class="mono">${safe(app.refNo)}</span></h1>
         <p style="color: #4F6155; font-size: 12.5px; margin: 4px 0 0;">
           Generated: ${now.toLocaleString()} | Official Scrutiny &amp; Compliance Record

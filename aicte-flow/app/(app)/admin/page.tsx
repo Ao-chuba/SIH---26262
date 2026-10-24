@@ -50,7 +50,7 @@ export default async function AdminPage({
       <div className="page-header">
         <div>
           <h1 className="page-title">Administration</h1>
-          <p className="page-subtitle">Clock simulation, SLA rules, and user hierarchy</p>
+          <p className="page-subtitle">System calendar, SLA rules, and user hierarchy</p>
         </div>
       </div>
 

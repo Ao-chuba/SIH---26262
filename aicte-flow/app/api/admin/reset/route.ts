@@ -73,7 +73,7 @@ export async function POST() {
         payload: { resetBy: email },
       });
     }
-    return NextResponse.json({ success: true, message: "Demo data reset successfully" });
+    return NextResponse.json({ success: true, message: "Sample data reset successfully" });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: errorMsg }, { status: 500 });
