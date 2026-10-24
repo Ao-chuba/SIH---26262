@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/auth";
+import { canViewApplication, getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import { differenceInCalendarDays } from "date-fns";
@@ -220,9 +220,7 @@ export default async function ApplicationDetailPage({
   });
 
   if (!app) notFound();
-
-  if (user.role === "INSTITUTION" && app.institutionId !== user.institutionId) notFound();
-  if (user.role === "REGIONAL_OFFICER" && app.regionId !== user.regionId) notFound();
+  if (!canViewApplication(user, app, app.evcVisit?.committeeId)) notFound();
 
   const currentDeadline =
     app.deadlineItems.find((d) => d.state === "OPEN" && d.kind === "STAGE_TIMELINE") ??
@@ -321,6 +319,7 @@ export default async function ApplicationDetailPage({
         }}
         user={{ role: user.role, id: user.id }}
         aphDeficiencyDraft={aphDeficiencyDraft}
+        evcVisitId={app.evcVisit?.id ?? null}
       />
 
       <div className="grid-2" style={{ marginBottom: 16 }}>

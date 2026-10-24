@@ -25,6 +25,17 @@ export default async function EvcDetailPage({ params }: { params: Promise<{ id: 
 
   if (!evc) notFound();
 
+  if (user.role === "REGIONAL_OFFICER" && evc.application.regionId !== user.regionId) {
+    notFound();
+  }
+  if (
+    user.role === "EVC_COMMITTEE" &&
+    evc.committeeId &&
+    evc.committeeId !== user.id
+  ) {
+    notFound();
+  }
+
   const committeeMembers = await prisma.user.findMany({
     where: { role: "EVC_COMMITTEE" },
     select: { id: true, name: true, email: true },
