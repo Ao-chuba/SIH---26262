@@ -1,7 +1,8 @@
 ﻿# AICTE Flow — Approval Workflow Automation & Compliance Monitoring System
 
-**Problem Statement:** SIH 2024 PS-26262
-**Domain:** e-Governance / EdTech
+**Problem Statement:** SIH26262 (Smart India Hackathon 2026) — AICTE
+**Title:** Integrated AICTE Approval Workflow Automation, Compliance Monitoring and Alert Management System
+**Theme:** Smart Automation · **Domain:** e-Governance / EdTech
 
 ---
 
