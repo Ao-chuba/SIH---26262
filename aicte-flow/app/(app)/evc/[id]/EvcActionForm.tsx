@@ -42,7 +42,8 @@ export function EvcActionForm({
           isNewInstitution,
         }),
       });
-      if (!res.ok) throw new Error("Failed to schedule EVC visit");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to schedule EVC visit");
       router.push("/evc");
       router.refresh();
     } catch (err: unknown) {
@@ -62,7 +63,8 @@ export function EvcActionForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reportRef }),
       });
-      if (!res.ok) throw new Error("Failed to complete EVC visit");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to complete EVC visit");
       router.push("/evc");
       router.refresh();
     } catch (err: unknown) {
@@ -146,6 +148,7 @@ export function EvcActionForm({
               type="date"
               className="form-input"
               value={scheduledFor}
+              min={new Date().toISOString().slice(0, 10)}
               onChange={(e) => setScheduledFor(e.target.value)}
               required
             />

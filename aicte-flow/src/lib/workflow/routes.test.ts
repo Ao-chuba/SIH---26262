@@ -60,6 +60,19 @@ describe("getNextStage", () => {
     assert.equal(routeHasStage("EVC_SAC_SHC", "SAC_SHC"), true);
     assert.equal(routeHasStage("ONLY_SCRUTINY", "EVC_QUEUE"), false);
   });
+
+  it("returns an empty path and no next stage for unknown routes or stages", () => {
+    assert.deepEqual(getRouteStages("UNKNOWN_ROUTE"), []);
+    assert.equal(getNextStage("UNKNOWN_ROUTE", "SCRUTINY"), null);
+    assert.equal(getNextStage("ONLY_SCRUTINY", "EVC_QUEUE"), null);
+    assert.equal(routeHasStage("UNKNOWN_ROUTE", "SCRUTINY"), false);
+  });
+
+  it("does not advance beyond the human decision gate on any route", () => {
+    for (const route of Object.keys(ROUTES)) {
+      assert.equal(getNextStage(route, "DECISION_PENDING"), null, route);
+    }
+  });
 });
 
 describe("stage action gates", () => {

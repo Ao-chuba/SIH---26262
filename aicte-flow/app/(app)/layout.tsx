@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { SidebarNav } from "./SidebarNav";
 import { SidebarToggle } from "./SidebarToggle";
+import { UserSwitcher } from "./UserSwitcher";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   async function switchUser(formData: FormData) {
     "use server";
     const userId = formData.get("userId") as string;
+    const requestedReturnTo = formData.get("returnTo");
+    const returnTo =
+      typeof requestedReturnTo === "string" && requestedReturnTo.startsWith("/") && !requestedReturnTo.startsWith("//")
+        ? requestedReturnTo
+        : "/dashboard";
     if (!userId) return;
     const picked = await prisma.user.findUnique({ where: { id: userId } });
     if (!picked) return;
@@ -60,7 +66,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       entityId: picked.id,
       payload: { userId: picked.id, role: picked.role },
     });
-    redirect("/dashboard");
+    redirect(returnTo);
   }
 
   const navItems = [
@@ -181,22 +187,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
 
         <div className="user-switcher">
-          <form action={switchUser} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <select name="userId" defaultValue={user.id} aria-label="Switch user">
-              {allUsers.map((u) => {
-                const shortRole = ROLE_SHORT[u.role] ?? u.role;
-                const cleanName = u.name.replace(/^Institution User\s*[–-]\s*/i, "").trim();
-                return (
-                  <option key={u.id} value={u.id}>
-                    {shortRole} · {cleanName}
-                  </option>
-                );
-              })}
-            </select>
-            <button type="submit" className="btn btn-primary btn-sm">
-              Switch
-            </button>
-          </form>
+          <UserSwitcher
+            users={allUsers}
+            currentUserId={user.id}
+            action={switchUser}
+            roleLabels={ROLE_SHORT}
+          />
         </div>
 
         <Link href="/notifications" className="notif-bell" title="Notifications">

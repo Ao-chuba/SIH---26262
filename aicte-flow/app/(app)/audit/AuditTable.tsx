@@ -50,6 +50,13 @@ export function AuditTable({
   }
 
   async function handleTamper(action: "simulate" | "restore") {
+    if (
+      !window.confirm(
+        action === "simulate"
+          ? "Simulate audit-chain tampering? Verification will intentionally fail until restored."
+          : "Restore the simulated audit-chain change?"
+      )
+    ) return;
     setTamperBusy(true);
     setTamperMsg(null);
     try {

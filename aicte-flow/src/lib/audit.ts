@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { prisma } from "./db";
+import { prisma, runTx } from "./db";
 
 interface AuditParams {
   actorId?: string;
@@ -18,30 +18,30 @@ export async function appendAudit(params: AuditParams): Promise<void> {
   const { actorId, actorRole, action, entityType, entityId, payload } = params;
   const ts = new Date();
 
-  // Get the previous hash
-  const lastEntry = await prisma.auditLog.findFirst({
-    orderBy: { seq: "desc" },
-    select: { hash: true },
-  });
-  const prevHash = lastEntry?.hash ?? "0".repeat(64);
+  await runTx(async (tx) => {
+    const lastEntry = await tx.auditLog.findFirst({
+      orderBy: { seq: "desc" },
+      select: { hash: true },
+    });
+    const prevHash = lastEntry?.hash ?? "0".repeat(64);
+    const serializedPayload = JSON.stringify(payload);
+    const hash = createHash("sha256")
+      .update(prevHash + ts.toISOString() + (actorId ?? "") + action + entityType + entityId + serializedPayload)
+      .digest("hex");
 
-  // Compute new hash
-  const hash = createHash("sha256")
-    .update(prevHash + ts.toISOString() + (actorId ?? "") + action + entityType + entityId + JSON.stringify(payload))
-    .digest("hex");
-
-  await prisma.auditLog.create({
-    data: {
-      ts,
-      actorId,
-      actorRole,
-      action,
-      entityType,
-      entityId,
-      payload: JSON.stringify(payload),
-      prevHash,
-      hash,
-    },
+    await tx.auditLog.create({
+      data: {
+        ts,
+        actorId,
+        actorRole,
+        action,
+        entityType,
+        entityId,
+        payload: serializedPayload,
+        prevHash,
+        hash,
+      },
+    });
   });
 }
 

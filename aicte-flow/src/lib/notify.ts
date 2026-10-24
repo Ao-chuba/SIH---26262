@@ -12,6 +12,8 @@ export interface NotifyParams {
 }
 
 export async function notify(params: NotifyParams): Promise<void> {
+  if (!params.toUserId && !params.toInstitutionId) return;
+
   let targetUserId = params.toUserId;
   if (!targetUserId && params.toInstitutionId) {
     const instUser = await prisma.user.findFirst({
@@ -21,11 +23,11 @@ export async function notify(params: NotifyParams): Promise<void> {
     targetUserId = instUser?.id;
   }
 
-  const channels: ("INAPP" | "EMAIL" | "SMS")[] = ["INAPP"];
-  // Add simulated EMAIL for most kinds
-  if (params.kind !== "INFO") channels.push("EMAIL");
-  // Add SMS for urgent kinds
-  if (["OVERDUE", "ESCALATION"].includes(params.kind)) channels.push("SMS");
+  const channels: ("INAPP" | "EMAIL" | "SMS")[] = params.channel ? [params.channel] : ["INAPP"];
+  if (!params.channel) {
+    if (params.kind !== "INFO") channels.push("EMAIL");
+    if (["OVERDUE", "ESCALATION"].includes(params.kind)) channels.push("SMS");
+  }
 
   for (const channel of channels) {
     await prisma.notification.create({

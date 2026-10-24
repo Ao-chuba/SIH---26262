@@ -162,9 +162,10 @@ model InstDocument {
   title         String
   validFrom     DateTime
   validUntil    DateTime
-  status        String        @default("VALID") // VALID|EXPIRING|EXPIRED|RENEWAL_SUBMITTED|RENEWAL_VERIFIED|RENEWAL_REJECTED
+  status        String        @default("VALID") // VALID|EXPIRING|EXPIRED|RENEWAL_SUBMITTED|RENEWAL_REJECTED
   verifiedById  String?
   verifiedAt    DateTime?
+  remarks       String?
   institution   Institution   @relation(fields: [institutionId], references: [id])
   application   Application?  @relation(fields: [applicationId], references: [id])
   verifiedBy    User?         @relation("DocVerifiedBy", fields: [verifiedById], references: [id])
@@ -204,6 +205,8 @@ model DeadlineItem {
   escalationLevel Int              @default(0)
   openedAt        DateTime         @default(now())
   closedAt        DateTime?
+  escalationResolvedAt DateTime?
+  escalationResolveNote String?
   institution     Institution?     @relation(fields: [institutionId], references: [id])
   region          Region?          @relation(fields: [regionId], references: [id])
   application     Application?     @relation(fields: [applicationId], references: [id])
@@ -255,6 +258,9 @@ model EscalationEvent {
   escalatedToUserId String
   reason           String
   createdAt        DateTime     @default(now())
+  resolvedAt       DateTime?
+  resolutionNote   String?
+  resolvedById     String?
   deadlineItem     DeadlineItem @relation(fields: [deadlineItemId], references: [id])
   escalatedTo      User         @relation("EscalatedTo", fields: [escalatedToUserId], references: [id])
 }

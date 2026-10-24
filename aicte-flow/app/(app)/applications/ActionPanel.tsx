@@ -26,6 +26,18 @@ const STAGE_CUSTODIAN: Record<string, string> = {
   DECISION_PENDING: "Central Bureau (Competent Authority Decision)",
 };
 
+function apiError(data: unknown, fallback: string): string {
+  if (typeof data === "object" && data !== null && "error" in data) {
+    const error = (data as { error?: unknown }).error;
+    if (typeof error === "string") return error;
+    if (typeof error === "object" && error !== null && "message" in error) {
+      const message = (error as { message?: unknown }).message;
+      if (typeof message === "string") return message;
+    }
+  }
+  return fallback;
+}
+
 export function ActionPanel({
   app,
   user,
@@ -107,7 +119,7 @@ export function ActionPanel({
       });
       if (!res.ok) {
         const d = await res.json();
-        throw new Error(d.error);
+        throw new Error(apiError(d, "Could not advance application"));
       }
       router.refresh();
     } catch (e: unknown) {
@@ -132,7 +144,7 @@ export function ActionPanel({
       });
       if (!res.ok) {
         const d = await res.json();
-        throw new Error(d.error);
+        throw new Error(apiError(d, "Could not return application"));
       }
       setShowReturn(false);
       router.refresh();
@@ -154,7 +166,7 @@ export function ActionPanel({
       });
       if (!res.ok) {
         const d = await res.json();
-        throw new Error(d.error);
+        throw new Error(apiError(d, "Could not save observation"));
       }
       setShowObserve(false);
       setObsText("");
@@ -169,6 +181,13 @@ export function ActionPanel({
   async function doDecide() {
     if (!decision || remarks.trim().length < 5) {
       setError("Decision and remarks are required");
+      return;
+    }
+    if (
+      decision === "APPROVED_WITH_CONDITIONS" &&
+      (!condTitle.trim() || !condText.trim())
+    ) {
+      setError("Undertaking title and condition are required");
       return;
     }
     setLoading(true);
@@ -188,7 +207,7 @@ export function ActionPanel({
       });
       if (!res.ok) {
         const d = await res.json();
-        throw new Error(d.error);
+        throw new Error(apiError(d, "Could not record decision"));
       }
       setShowDecide(false);
       router.refresh();
@@ -214,7 +233,7 @@ export function ActionPanel({
       });
       if (!res.ok) {
         const d = await res.json();
-        throw new Error(d.error);
+        throw new Error(apiError(d, "Could not refer application"));
       }
       setShowRefer(false);
       router.refresh();
@@ -236,7 +255,7 @@ export function ActionPanel({
       });
       if (!res.ok) {
         const d = await res.json();
-        throw new Error(d.error);
+        throw new Error(apiError(d, "Could not submit reply"));
       }
       router.refresh();
     } catch (e: unknown) {
@@ -527,7 +546,6 @@ export function ActionPanel({
                 <option value="APPROVED">Approved</option>
                 <option value="APPROVED_WITH_CONDITIONS">Approved with Conditions</option>
                 <option value="REJECTED">Rejected</option>
-                <option value="DEFERRED">Deferred</option>
               </select>
             </div>
             {decision === "APPROVED_WITH_CONDITIONS" && (

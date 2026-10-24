@@ -7,6 +7,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const user = await requireRoleResponse(["EVC_COMMITTEE", "ADMIN"]);
   if (isDenied(user)) return user;
   const body = await request.json();
-  await completeEvc(id, user, { reportRef: body.reportRef ?? "EVC-REPORT-COMPLETED" });
-  return NextResponse.json({ success: true });
+  try {
+    await completeEvc(id, user, { reportRef: body.reportRef });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to complete EVC visit" },
+      { status: 400 }
+    );
+  }
 }

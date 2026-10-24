@@ -18,6 +18,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       { status: 400 }
     );
   }
+  if (
+    decision === "APPROVED_WITH_CONDITIONS" &&
+    (!undertaking?.title?.trim() || !undertaking?.condition?.trim())
+  ) {
+    return NextResponse.json(
+      { error: "Approved with Conditions requires an undertaking title and condition" },
+      { status: 400 }
+    );
+  }
 
   const app = await prisma.application.findUnique({ where: { id } });
   if (!app) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -46,15 +55,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       data: { state: "SATISFIED", closedAt: now },
     });
 
-    if (decision === "APPROVED_WITH_CONDITIONS" && undertaking?.title) {
+    if (decision === "APPROVED_WITH_CONDITIONS") {
       const dueInDays = Math.max(1, Number(undertaking.dueInDays) || 90);
       const dueDate = new Date(now.getTime() + dueInDays * 86400000);
       const ut = await tx.undertaking.create({
         data: {
           applicationId: id,
           institutionId: app.institutionId,
-          title: String(undertaking.title),
-          condition: String(undertaking.condition || "Comply with stipulated AICTE conditions."),
+          title: String(undertaking.title).trim(),
+          condition: String(undertaking.condition).trim(),
           dueDate,
           status: "PENDING",
           grantedAt: now,
