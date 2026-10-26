@@ -1,4 +1,4 @@
-﻿# Architectural Decisions & Engineering Rationale
+# Architectural Decisions & Engineering Rationale
 
 **Project:** AICTE Flow — Approval Workflow Automation, Compliance Monitoring & Alert Management System
 **Problem Statement:** SIH26262 (Smart India Hackathon 2026) — AICTE
@@ -26,9 +26,12 @@ Stage pendency, EVC visit delays, conditional undertaking compliance, and land l
 
 For evaluation and development environments, requiring individual passwords introduces friction. We implemented a secure HTTP-only cookie-based session switcher (`aicte_user_id`) with server-side role validation (`requireRole`, `requireAuth`, `canActOnApplication`). A user picker in the top navigation bar allows quick context switching. In a production deployment, this would be replaced by Jan Parichay / MeriPehchan OpenID Connect.
 
-### 1.4 Communication Simulation
+### 1.4 Communication Gateway & Sandbox Dispatcher
 
-Production external gateways (SMS, SMTP, Gov.in email relays) require credentials, and can fail during local development. Reminders and escalation notices write to the `Notification` table across three channels (INAPP, EMAIL, SMS). The in-app Notification Inbox shows real-time badges, while a Delivery Log tab in `/notifications` demonstrates simulated outbound email bodies and SMS payloads with timestamps.
+Production external gateways (SMS, SMTP, Gov.in email relays) require credentials, which can fail or introduce friction during offline evaluation. The system implements a resilient dual-mode notification engine:
+- **Sandbox Mode (Zero Setup):** Reminders and escalations write to the `Notification` table across three channels (INAPP, EMAIL, SMS). The system generates Ethereal test inbox previews and logs formatted outbound payloads in the `/notifications` Delivery Log tab with timestamps.
+- **Live Dispatch Mode (Plug-and-Play):** If configured in `.env`, the engine immediately delivers real emails via Resend / SMTP and real SMS alerts via Fast2SMS / Twilio.
+- **Interactive Live Tester:** Evaluators can trigger an immediate test notification to their own email address or mobile phone directly from the UI to observe real-time SLA and escalation alerts during live demonstrations.
 
 ---
 

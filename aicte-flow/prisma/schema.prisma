@@ -240,6 +240,8 @@ model Notification {
   kind             String       // REMINDER|OVERDUE|ESCALATION|INFO|RETURN
   subject          String
   body             String
+  deliveryStatus   String?      // DELIVERED | SENT_SANDBOX | SIMULATED | FAILED
+  previewUrl       String?      // Browser view link (e.g. Ethereal Email preview) or dispatch tracking ref
   deadlineItemId   String?
   applicationId    String?
   createdAt        DateTime     @default(now())
