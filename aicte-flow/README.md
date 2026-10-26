@@ -1,4 +1,4 @@
-﻿# AICTE Flow — Approval Workflow Automation & Compliance Monitoring System
+# AICTE Flow — Approval Workflow Automation & Compliance Monitoring System
 
 **Problem Statement:** SIH26262 (Smart India Hackathon 2026) — AICTE
 **Title:** Integrated AICTE Approval Workflow Automation, Compliance Monitoring and Alert Management System
@@ -117,7 +117,9 @@ Switch between roles using the user switcher dropdown in the top navigation bar,
 | Regional Officer (Southern) | ro.southern.alpha@demo.aicte | Southern region applications and document renewals |
 | EVC Committee | evc.member1@demo.aicte | Assigned inspections and report submission |
 | SAC/SHC Member | sac.member@demo.aicte | Standing Advisory/Hearing Committee stage evaluations |
-| Institution | inst.1.apex@demo.aicte | Application submission, deficiency responses, undertaking uploads |
+| Institution (COEP Technological Univ) | inst.coep@demo.aicte | Application submission, deficiency responses, undertaking uploads |
+| Institution (SGSITS Indore) | inst.sgsits@demo.aicte | Application submission, deficiency responses, undertaking uploads |
+| Institution (DTU Delhi) | inst.dtu@demo.aicte | Application submission, deficiency responses, undertaking uploads |
 
 ---
 

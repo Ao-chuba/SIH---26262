@@ -2,7 +2,10 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { formatStatus } from "@/lib/format";
+import { getGatewayStatus } from "@/lib/notify";
+import { LiveAlertTester } from "./LiveAlertTester";
 import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +20,7 @@ export default async function NotificationsPage({
   const params = await searchParams;
   const canSeeDelivery = user.role === "ADMIN" || user.role === "BUREAU_OFFICER" || user.role === "REGIONAL_OFFICER";
   const activeTab = params.tab === "delivery" && canSeeDelivery ? "delivery" : "inbox";
+  const gatewayStatus = getGatewayStatus();
 
   const [inbox, deliveryLog] = await Promise.all([
     prisma.notification.findMany({
@@ -79,14 +83,21 @@ export default async function NotificationsPage({
     RETURN: "badge-amber",
   };
 
+  const statusColors: Record<string, string> = {
+    DELIVERED: "badge-green",
+    SENT_SANDBOX: "badge-blue",
+    SIMULATED: "badge-gray",
+    FAILED: "badge-red",
+  };
+
   const unreadCount = inbox.filter((n) => !n.readAt).length;
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Notifications</h1>
-          <p className="page-subtitle">{unreadCount} unread</p>
+          <h1 className="page-title">Notifications &amp; Alerts</h1>
+          <p className="page-subtitle">{unreadCount} unread inbox alerts</p>
         </div>
         {unreadCount > 0 && activeTab === "inbox" && (
           <form action={markAllRead}>
@@ -174,55 +185,81 @@ export default async function NotificationsPage({
       )}
 
       {activeTab === "delivery" && canSeeDelivery && (
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">Outbound Email &amp; SMS Log</span>
-            <span className="badge badge-blue">{deliveryLog.length}</span>
-          </div>
-          <div style={{ overflowX: "auto" }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Channel</th>
-                  <th>Kind</th>
-                  <th>Recipient</th>
-                  <th>Message</th>
-                  <th>Sent At</th>
-                </tr>
-              </thead>
-              <tbody>
-                {deliveryLog.map((n) => (
-                  <tr key={n.id}>
-                    <td>
-                      <span className={`badge ${n.channel === "EMAIL" ? "badge-blue" : "badge-amber"}`}>
-                        {formatStatus(n.channel)}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`badge ${kindColors[n.kind] ?? "badge-gray"}`}>{formatStatus(n.kind)}</span>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 700, fontSize: 13 }}>{n.toUser?.name ?? "System User"}</div>
-                      <div className="font-mono" style={{ fontSize: 11, color: "var(--forest-muted)" }}>
-                        {n.toUser?.email ?? ""}
-                      </div>
-                    </td>
-                    <td style={{ maxWidth: 380 }}>
-                      <div style={{ fontWeight: 700, color: "var(--forest)" }}>{n.subject}</div>
-                      <div style={{ fontSize: 12, color: "var(--forest-muted)", marginTop: 2 }}>{n.body}</div>
-                    </td>
-                    <td style={{ fontSize: 12, whiteSpace: "nowrap" }}>{new Date(n.createdAt).toLocaleString()}</td>
-                  </tr>
-                ))}
-                {deliveryLog.length === 0 && (
+        <div>
+          <LiveAlertTester gatewayStatus={gatewayStatus} />
+
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">Outbound Email &amp; SMS Dispatch Log</span>
+              <span className="badge badge-blue">{deliveryLog.length}</span>
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table className="data-table">
+                <thead>
                   <tr>
-                    <td colSpan={5}>
-                      <div className="empty-state"><p>No outbound dispatches recorded.</p></div>
-                    </td>
+                    <th>Channel</th>
+                    <th>Kind</th>
+                    <th>Recipient</th>
+                    <th>Delivery Status</th>
+                    <th>Message &amp; Sandbox</th>
+                    <th>Sent At</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {deliveryLog.map((n) => (
+                    <tr key={n.id}>
+                      <td>
+                        <span className={`badge ${n.channel === "EMAIL" ? "badge-blue" : "badge-amber"}`}>
+                          {formatStatus(n.channel)}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`badge ${kindColors[n.kind] ?? "badge-gray"}`}>{formatStatus(n.kind)}</span>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 700, fontSize: 13 }}>{n.toUser?.name ?? "System User"}</div>
+                        <div className="font-mono" style={{ fontSize: 11, color: "var(--forest-muted)" }}>
+                          {n.toUser?.email ?? ""}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`badge ${statusColors[n.deliveryStatus ?? "SIMULATED"] ?? "badge-gray"}`}>
+                          {n.deliveryStatus ? n.deliveryStatus.replace("_", " ") : "SIMULATED"}
+                        </span>
+                      </td>
+                      <td style={{ maxWidth: 380 }}>
+                        <div style={{ fontWeight: 700, color: "var(--forest)" }}>{n.subject}</div>
+                        <div style={{ fontSize: 12, color: "var(--forest-muted)", marginTop: 2 }}>{n.body}</div>
+                        {n.previewUrl && (
+                          <div style={{ marginTop: 6 }}>
+                            <a
+                              href={n.previewUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-secondary btn-sm"
+                              style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, padding: "2px 8px" }}
+                            >
+                              <ExternalLink size={12} />
+                              View Outbound Email ↗
+                            </a>
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ fontSize: 12, whiteSpace: "nowrap" }}>{new Date(n.createdAt).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                  {deliveryLog.length === 0 && (
+                    <tr>
+                      <td colSpan={6}>
+                        <div className="empty-state">
+                          <p>No outbound dispatches recorded.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
