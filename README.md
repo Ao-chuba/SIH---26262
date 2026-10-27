@@ -117,7 +117,9 @@ Switch between roles using the user switcher dropdown in the top navigation bar,
 | Regional Officer (Southern) | ro.southern.alpha@demo.aicte | Southern region applications and document renewals |
 | EVC Committee | evc.member1@demo.aicte | Inspection queue, visit scheduling, report submission |
 | SAC/SHC Member | sac.member@demo.aicte | Standing Advisory/Hearing Committee stage evaluations |
-| Institution | inst.1.apex@demo.aicte | Application submission, deficiency responses, undertaking uploads |
+| Institution (SGSITS Indore) | inst.sgsits@demo.aicte | Application submission, deficiency responses, undertaking uploads |
+| Institution (COEP Pune) | inst.coep@demo.aicte | Application submission, deficiency responses, undertaking uploads |
+| Institution (DTU Delhi) | inst.dtu@demo.aicte | Application submission, deficiency responses, undertaking uploads |
 
 ---
 

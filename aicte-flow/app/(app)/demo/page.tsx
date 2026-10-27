@@ -8,71 +8,87 @@ import { appendAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
-const STEPS = [
-  {
-    step: 1,
-    title: "Institution deficiency reply",
-    account: "inst.1.apex@demo.aicte",
-    refNo: "DEMO-INTAKE-004",
-    hint: "Open the returned intake file, submit a compliance reply, and resume Re-Scrutiny.",
-    roleHint: "INSTITUTION",
-    switchTargets: [{ email: "inst.1.apex@demo.aicte", label: "Open as Institution" }],
-  },
-  {
-    step: 2,
-    title: "Regional scrutiny to EVC queue",
-    account: "ro.central.alpha@demo.aicte",
-    refNo: "DEMO-NEW-INST-001",
-    hint: "Complete scrutiny (or return with an APH deficiency note). Advance places the file in the EVC Queue.",
-    roleHint: "REGIONAL_OFFICER",
-    switchTargets: [{ email: "ro.central.alpha@demo.aicte", label: "Open as Regional Officer" }],
-  },
-  {
-    step: 3,
-    title: "EVC schedule and report",
-    account: "ro.central.alpha@demo.aicte → evc.member1@demo.aicte",
-    refNo: "DEMO-NEW-COURSE-002",
-    hint: "Regional Officer schedules the queued visit; the assigned EVC member registers the inspection report.",
-    roleHint: "REGIONAL_OFFICER → EVC_COMMITTEE",
-    switchTargets: [
-      { email: "ro.central.alpha@demo.aicte", label: "Schedule as Regional Officer" },
-      { email: "evc.member1@demo.aicte", label: "Report as EVC Member" },
-    ],
-  },
-  {
-    step: 4,
-    title: "Bureau decision and undertaking",
-    account: "bo.alpha@demo.aicte",
-    refNo: "DEMO-EXTENSION-003",
-    hint: "At Decision Pending, record Approve with Conditions to create a time-bound undertaking.",
-    roleHint: "BUREAU_OFFICER",
-    switchTargets: [{ email: "bo.alpha@demo.aicte", label: "Open as Bureau Officer" }],
-  },
-  {
-    step: 5,
-    title: "Deadline engine and escalations",
-    account: "admin@demo.aicte",
-    refNo: null,
-    hint: "In Admin, advance the system calendar past due dates, run the deadline engine, then review Escalations and Notifications.",
-    roleHint: "ADMIN",
-    switchTargets: [{ email: "admin@demo.aicte", label: "Open as Admin" }],
-    links: [
-      { href: "/admin?tab=clock", label: "System calendar" },
-      { href: "/escalations", label: "Escalations" },
-      { href: "/notifications", label: "Notifications" },
-    ],
-  },
-  {
-    step: 6,
-    title: "Audit chain verification",
-    account: "admin@demo.aicte",
-    refNo: null,
-    hint: "Open Audit Trail and verify the hash chain. Use the integrity test only to confirm detection, then restore.",
-    roleHint: "ADMIN",
-    switchTargets: [{ email: "admin@demo.aicte", label: "Open as Admin" }],
-    links: [{ href: "/audit", label: "Audit trail" }],
-  },
-] as const;
+/** Fallback if DEMO-INTAKE-004's institution login cannot be resolved from seed. */
+const DEMO_INTAKE_INSTITUTION_EMAIL = "inst.sgsits@demo.aicte";
+
+type GuideStep = {
+  step: number;
+  title: string;
+  account: string;
+  refNo: string | null;
+  hint: string;
+  roleHint: string;
+  switchTargets: { email: string; label: string }[];
+  links?: { href: string; label: string }[];
+};
+
+function buildSteps(intakeInstitutionEmail: string): GuideStep[] {
+  return [
+    {
+      step: 1,
+      title: "Institution deficiency reply",
+      account: intakeInstitutionEmail,
+      refNo: "DEMO-INTAKE-004",
+      hint: "Open the returned intake file, submit a compliance reply, and resume Re-Scrutiny.",
+      roleHint: "INSTITUTION",
+      switchTargets: [{ email: intakeInstitutionEmail, label: "Open as Institution" }],
+    },
+    {
+      step: 2,
+      title: "Regional scrutiny to EVC queue",
+      account: "ro.central.alpha@demo.aicte",
+      refNo: "DEMO-NEW-INST-001",
+      hint: "Complete scrutiny (or return with an APH deficiency note). Advance places the file in the EVC Queue.",
+      roleHint: "REGIONAL_OFFICER",
+      switchTargets: [{ email: "ro.central.alpha@demo.aicte", label: "Open as Regional Officer" }],
+    },
+    {
+      step: 3,
+      title: "EVC schedule and report",
+      account: "ro.central.alpha@demo.aicte → evc.member1@demo.aicte",
+      refNo: "DEMO-NEW-COURSE-002",
+      hint: "Regional Officer schedules the queued visit; the assigned EVC member registers the inspection report.",
+      roleHint: "REGIONAL_OFFICER → EVC_COMMITTEE",
+      switchTargets: [
+        { email: "ro.central.alpha@demo.aicte", label: "Schedule as Regional Officer" },
+        { email: "evc.member1@demo.aicte", label: "Report as EVC Member" },
+      ],
+    },
+    {
+      step: 4,
+      title: "Bureau decision and undertaking",
+      account: "bo.alpha@demo.aicte",
+      refNo: "DEMO-EXTENSION-003",
+      hint: "At Decision Pending, record Approve with Conditions to create a time-bound undertaking.",
+      roleHint: "BUREAU_OFFICER",
+      switchTargets: [{ email: "bo.alpha@demo.aicte", label: "Open as Bureau Officer" }],
+    },
+    {
+      step: 5,
+      title: "Deadline engine and escalations",
+      account: "admin@demo.aicte",
+      refNo: null,
+      hint: "In Admin, advance the system calendar past due dates, run the deadline engine, then review Escalations and Notifications.",
+      roleHint: "ADMIN",
+      switchTargets: [{ email: "admin@demo.aicte", label: "Open as Admin" }],
+      links: [
+        { href: "/admin?tab=clock", label: "System calendar" },
+        { href: "/escalations", label: "Escalations" },
+        { href: "/notifications", label: "Notifications" },
+      ],
+    },
+    {
+      step: 6,
+      title: "Audit chain verification",
+      account: "admin@demo.aicte",
+      refNo: null,
+      hint: "Open Audit Trail and verify the hash chain. Use the integrity test only to confirm detection, then restore.",
+      roleHint: "ADMIN",
+      switchTargets: [{ email: "admin@demo.aicte", label: "Open as Admin" }],
+      links: [{ href: "/audit", label: "Audit trail" }],
+    },
+  ];
+}
 
 export default async function ProcessGuidePage() {
   const user = await getCurrentUser();
@@ -86,11 +102,23 @@ export default async function ProcessGuidePage() {
       refNo: true,
       currentStageKey: true,
       status: true,
-      institution: { select: { name: true } },
+      institution: {
+        select: {
+          name: true,
+          users: {
+            where: { role: "INSTITUTION" },
+            select: { email: true },
+            take: 1,
+          },
+        },
+      },
       evcVisit: { select: { id: true } },
     },
   });
   const byRef = Object.fromEntries(samples.map((d) => [d.refNo, d]));
+  const intakeInstitutionEmail =
+    byRef["DEMO-INTAKE-004"]?.institution.users[0]?.email ?? DEMO_INTAKE_INSTITUTION_EMAIL;
+  const STEPS = buildSteps(intakeInstitutionEmail);
 
   async function switchToAndGo(userEmail: string, href: string) {
     "use server";
